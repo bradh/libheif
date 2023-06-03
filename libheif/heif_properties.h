@@ -37,7 +37,8 @@ enum heif_item_property_type
   heif_item_property_type_transform_mirror = heif_fourcc('i', 'm', 'i', 'r'),
   heif_item_property_type_transform_rotation = heif_fourcc('i', 'r', 'o', 't'),
   heif_item_property_type_transform_crop = heif_fourcc('c', 'l', 'a', 'p'),
-  heif_item_property_type_image_size = heif_fourcc('i', 's', 'p', 'e')
+  heif_item_property_type_image_size = heif_fourcc('i', 's', 'p', 'e'),
+  heif_item_property_type_transform_scale = heif_fourcc('i', 's', 'c', 'l')
 };
 
 // Get the heif_property_id for a heif_item_id.

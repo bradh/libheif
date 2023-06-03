@@ -19,7 +19,7 @@ libheif has support for:
 * alpha channels, depth maps, thumbnails, auxiliary images
 * multiple images in a file
 * HDR images, correct color transform according to embedded color profiles
-* image transformations (crop, mirror, rotate), overlay images
+* image transformations (crop, mirror, rotate, scale), overlay images
 * plugin interface to add alternative codecs
 * reading EXIF and XMP metadata
 * region annotations and mask images
