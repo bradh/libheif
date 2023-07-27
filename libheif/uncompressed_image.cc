@@ -333,7 +333,10 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                    sstr.str());
     }
   }
-  if (uncC->get_sampling_type() != sampling_type_no_subsampling) {
+  if ((uncC->get_sampling_type() != sampling_type_no_subsampling)
+      && (uncC->get_sampling_type() != sampling_type_422)
+      && (uncC->get_sampling_type() != sampling_type_420)
+      ) {
     std::stringstream sstr;
     sstr << "Uncompressed sampling_type of " << ((int) uncC->get_sampling_type()) << " is not implemented yet";
     return Error(heif_error_Unsupported_feature,
@@ -417,15 +420,26 @@ static Error get_heif_chroma_uncompressed(std::shared_ptr<Box_uncC>& uncC, std::
   }
 
   if (componentSet == ((1 << component_type_Y) | (1 << component_type_Cb) | (1 << component_type_Cr))) {
-    if (uncC->get_interleave_type() == 0) {
+    if (uncC->get_interleave_type() == interleave_type_component) {
       // Planar YCbCr
-      *out_chroma = heif_chroma_444;
-      *out_colourspace = heif_colorspace_YCbCr;
+      if (uncC->get_sampling_type() == sampling_type_no_subsampling) {
+        *out_chroma = heif_chroma_444;
+        *out_colourspace = heif_colorspace_YCbCr;
+        std::cout << "yo, 444!" << std::endl;
+      } else if (uncC->get_sampling_type() == sampling_type_422) {
+        *out_chroma = heif_chroma_422;
+        *out_colourspace = heif_colorspace_YCbCr;
+        std::cout << "yo, 422!" << std::endl;
+      } else if (uncC->get_sampling_type() == sampling_type_420) {
+        *out_chroma = heif_chroma_420;
+        *out_colourspace = heif_colorspace_YCbCr;
+        std::cout << "yo, 420!" << std::endl;
+      }
     }
   }
 
   if (componentSet == ((1 << component_type_monochrome)) || componentSet == ((1 << component_type_monochrome) | (1 << component_type_alpha))) {
-    if (uncC->get_interleave_type() == 0) {
+    if (uncC->get_interleave_type() == interleave_type_component) {
       // Planar mono or planar mono + alpha
       *out_chroma = heif_chroma_monochrome;
       *out_colourspace = heif_colorspace_monochrome;
@@ -603,13 +617,19 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
   for (Box_uncC::Component component : uncC->get_components()) {
     heif_channel channel;
     if (map_uncompressed_component_to_channel(cmpd, component, &channel)) {
-      img->add_plane(channel, width, height, component.component_bit_depth);
+      if ((uncC->get_sampling_type() == sampling_type_422) && ((channel == heif_channel_Cb) || (channel == heif_channel_Cr))) {
+        img->add_plane(channel, width / 2, height, component.component_bit_depth);
+      } else if ((uncC->get_sampling_type() == sampling_type_420) && ((channel == heif_channel_Cb) || (channel == heif_channel_Cr))) {
+        img->add_plane(channel, width / 2, height / 2, component.component_bit_depth);
+      } else {
+        img->add_plane(channel, width, height, component.component_bit_depth);
+      }
     }
     componentOffset++;
   }
 
   const uint32_t tile_height = height / uncC->get_number_of_tile_rows();
-  const uint32_t tile_width = width / uncC->get_number_of_tile_columns();
+  uint32_t tile_width = width / uncC->get_number_of_tile_columns();
   const uint8_t* src = uncompressed_data.data();
   uint64_t src_offset = 0;
   // TODO: needs to handle multiple bytes per sample, plus row padding
@@ -626,7 +646,7 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
       uint8_t* dst_plane = img->get_plane(channel, &stride);
       for (uint32_t tile_row = 0; tile_row < uncC->get_number_of_tile_rows(); tile_row++) {
         for (uint32_t tile_column = 0; tile_column < uncC->get_number_of_tile_columns(); tile_column++) {
-          uint64_t dst_column_offset = tile_column * tile_width;
+          uint64_t dst_column_offset = tile_column * bytes_per_tile_row;
           for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
             uint64_t dst_row_number = tile_row * tile_height + tile_y;
             uint64_t dst_row_offset = dst_row_number * stride;
@@ -651,11 +671,18 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
               // TODO: we need to advance src_offset by the bytes in a tile for the channel
               continue;
             }
-            uint64_t dst_column_offset = tile_column * tile_width;
             int stride;
             uint8_t* dst_plane = img->get_plane(channel, &stride);
-            for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
-              uint64_t dst_row_number = tile_row * tile_height + tile_y;
+            tile_width = img->get_width(channel) / uncC->get_number_of_tile_columns();
+            // TODO: needs to handle multiple bytes per sample, plus row padding
+            bytes_per_tile_row = tile_width;
+            uint64_t dst_column_offset = tile_column * bytes_per_tile_row;
+            uint32_t comp_tile_height = tile_height;
+            if ((uncC->get_sampling_type() == sampling_type_420) && ((channel == heif_channel_Cb) || (channel == heif_channel_Cr))) {
+              comp_tile_height = tile_height / 2;
+            }
+            for (uint32_t tile_y = 0; tile_y < comp_tile_height; tile_y++) {
+              uint64_t dst_row_number = tile_row * comp_tile_height + tile_y;
               uint64_t dst_row_offset = dst_row_number * stride;
               memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row);
               src_offset += bytes_per_tile_row;
