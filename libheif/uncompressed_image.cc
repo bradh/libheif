@@ -426,15 +426,12 @@ static Error get_heif_chroma_uncompressed(std::shared_ptr<Box_uncC>& uncC, std::
       if (uncC->get_sampling_type() == sampling_type_no_subsampling) {
         *out_chroma = heif_chroma_444;
         *out_colourspace = heif_colorspace_YCbCr;
-        std::cout << "yo, 444!" << std::endl;
       } else if (uncC->get_sampling_type() == sampling_type_422) {
         *out_chroma = heif_chroma_422;
         *out_colourspace = heif_colorspace_YCbCr;
-        std::cout << "yo, 422!" << std::endl;
       } else if (uncC->get_sampling_type() == sampling_type_420) {
         *out_chroma = heif_chroma_420;
         *out_colourspace = heif_colorspace_YCbCr;
-        std::cout << "yo, 420!" << std::endl;
       }
     }
   }
@@ -665,7 +662,6 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
   } else {
     for (uint32_t tile_row = 0; tile_row < uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < uncC->get_number_of_tile_columns(); tile_column++) {
-        std::cout << "tile row: " << tile_row << ", tile_column: " << tile_column << std::endl;
         if (uncC->get_interleave_type() == interleave_type_component) {
           for (Box_uncC::Component component : uncC->get_components()) {
             heif_channel channel;
@@ -715,7 +711,6 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
           uint8_t* y_dst_plane = img->get_plane(heif_channel_Y, &y_stride);
           int cb_stride;
           uint8_t* cb_dst_plane = img->get_plane(heif_channel_Cb, &cb_stride);
-          std::cout << "cb_stride: " << cb_stride << std::endl;
           int cr_stride;
           uint8_t* cr_dst_plane = img->get_plane(heif_channel_Cr, &cr_stride);
           for (Box_uncC::Component component : uncC->get_components()) {
@@ -727,8 +722,8 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
             uint32_t comp_tile_height = tile_height;
             if ((uncC->get_sampling_type() == sampling_type_420) && ((channel == heif_channel_Cb) || (channel == heif_channel_Cr))) {
               comp_tile_height = tile_height / 2;
-              std::cout << "comp_tile_height: " << comp_tile_height << std::endl;
             }
+            tile_width = img->get_width(channel) / uncC->get_number_of_tile_columns();
             if (channel == heif_channel_Y) {
               for (uint32_t tile_y = 0; tile_y < comp_tile_height; tile_y++) {
                 uint64_t dst_row_number = tile_row * comp_tile_height + tile_y;
@@ -736,26 +731,18 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
                 uint64_t dst_column_offset = tile_column * tile_width;
                 memcpy(y_dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row);
                 src_offset += bytes_per_tile_row;
-                std::cout << "Y: " << bytes_per_tile_row << std::endl;
               }
             } else if (channel == heif_channel_Cb) {
               // Chroma
-              tile_width = img->get_width(channel) / uncC->get_number_of_tile_columns();
-              std::cout << "tile_width: " << tile_width << std::endl;
               for (uint32_t tile_y = 0; tile_y < comp_tile_height; tile_y++) {
                 // TODO: handle Cr before Cb
                 uint64_t dst_row_number = tile_row * comp_tile_height + tile_y;
                 uint64_t dst_row_offset = dst_row_number * 64;
-                // std::cout << "dst_row_offset: " << dst_row_offset << std::endl;
                 for (uint32_t tile_x = 0; tile_x < tile_width; tile_x++) {
                   uint64_t dst_column_number = tile_column * tile_width + tile_x;
                   uint64_t dst_column_offset = dst_column_number; // TODO: bytes per sample
-                  // std::cout << "dst_column_offset: " << dst_column_offset << std::endl;
-                  std::cout << "dst_offset: " << dst_row_offset + dst_column_offset << std::endl;
-                  std::cout << "Cb: " << std::hex << (int)(src[src_offset]) << std::endl;
                   cb_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
                   src_offset += 1; // TODO: bytes per sample
-                  std::cout << "Cr: " << std::hex << (int)(src[src_offset]) << std::endl;
                   cr_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
                   src_offset += 1; // TODO: bytes per sample
                 }
