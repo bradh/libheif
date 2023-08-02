@@ -38,7 +38,7 @@
   "uncompressed_tile_tiled.heif", "uncompressed_tile_tiled_align.heif"
 
 #define YCBCR444_FILES "uncompressed_yuv444_comp_tiled.heif"
-#define YCBCR422_FILES "uncompressed_yuv422_comp_tiled.heif"
+#define YCBCR422_FILES "uncompressed_yuv422_comp_tiled.heif", "uncompressed_yuv422_mix_tiled.heif"
 #define YCBCR420_FILES "uncompressed_yuv420_comp_tiled.heif", "uncompressed_yuv420_mix.heif", "uncompressed_yuv420_mix_tiled.heif"
 #define YCBCR_FILES YCBCR444_FILES, YCBCR422_FILES, YCBCR420_FILES
 
