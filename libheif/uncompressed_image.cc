@@ -174,6 +174,42 @@ Error Box_cmpd::write(StreamWriter& writer) const
   return Error::Ok;
 }
 
+
+Error Box_cmpC::parse(BitstreamRange& range)
+{
+  parse_full_box_header(range);
+  m_compression_type = range.read32();
+  uint8_t v = range.read8();
+  m_can_decompress_full_sample = v & 0x80;
+  m_subsample_type = v & 0x7f;
+  return range.get_error();
+}
+
+std::string Box_cmpC::dump(Indent& indent) const
+{
+  std::ostringstream sstr;
+  sstr << Box::dump(indent);
+
+  // TODO
+
+  return sstr.str();
+}
+
+Error Box_cmpC::write(StreamWriter& writer) const
+{
+  size_t box_start = reserve_box_header_space(writer);
+
+  writer.write32(m_compression_type);
+  uint8_t v = m_can_decompress_full_sample ? 0x80 : 0x00;
+  v += m_subsample_type;
+  writer.write8(v);
+
+  prepend_header(writer, box_start);
+
+  return Error::Ok;
+}
+
+
 Error Box_uncC::parse(BitstreamRange& range)
 {
   parse_full_box_header(range);
@@ -950,6 +986,7 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
                                                         const std::shared_ptr<HeifPixelImage>& src_image,
                                                         void* encoder_struct,
                                                         const struct heif_encoding_options& options,
+                                                        const uint32_t compression_type,
                                                         std::shared_ptr<HeifContext::Image>& out_image)
 {
   std::shared_ptr<Box_cmpd> cmpd = std::make_shared<Box_cmpd>();
@@ -961,6 +998,15 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
   }
   heif_file->add_property(out_image->get_id(), cmpd, true);
   heif_file->add_property(out_image->get_id(), uncC, true);
+
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+  if (compression_type != fourcc("none")) {
+    std::shared_ptr<Box_cmpC> cmpC = std::make_shared<Box_cmpC>();
+    // TODO: fill cmpC
+    heif_file->add_property(out_image->get_id(), cmpC, true);
+    // TODO: smsi
+  }
+#endif
 
   std::vector<uint8_t> data;
   if (src_image->get_colorspace() == heif_colorspace_YCbCr)
@@ -977,7 +1023,7 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
       }
       offset += out_size;
     }
-    heif_file->append_iloc_data(out_image->get_id(), data, 0);
+    heif_file->append_iloc_data(out_image->get_id(), data, 0, compression_type);
   }
   else if (src_image->get_colorspace() == heif_colorspace_RGB)
   {
@@ -998,7 +1044,7 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
         memcpy(data.data() + offset, src_data, out_size);
         offset += out_size;
       }
-      heif_file->append_iloc_data(out_image->get_id(), data, 0);
+      heif_file->append_iloc_data(out_image->get_id(), data, 0, compression_type);
     }
     else if ((src_image->get_chroma_format() == heif_chroma_interleaved_RGB) ||
              (src_image->get_chroma_format() == heif_chroma_interleaved_RGBA) ||
@@ -1034,7 +1080,7 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
       for (int y = 0; y < src_image->get_height(); y++) {
         memcpy(data.data() + y * src_image->get_width() * bytes_per_pixel, src_data + src_stride * y, src_image->get_width() * bytes_per_pixel);
       }
-      heif_file->append_iloc_data(out_image->get_id(), data, 0);
+      heif_file->append_iloc_data(out_image->get_id(), data, 0, compression_type);
     }
     else
     {
@@ -1064,7 +1110,7 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
       memcpy(data.data() + offset, src_data, out_size);
       offset += out_size;
     }
-    heif_file->append_iloc_data(out_image->get_id(), data, 0);
+    heif_file->append_iloc_data(out_image->get_id(), data, 0, compression_type);
   }
   else
   {

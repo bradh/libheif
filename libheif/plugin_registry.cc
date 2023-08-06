@@ -176,8 +176,11 @@ void register_default_plugins()
 #endif
 
 register_encoder(get_encoder_plugin_mask());
-}
 
+#if WITH_UNCOMPRESSED_CODEC && ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+  register_encoder(get_encoder_plugin_agci());
+#endif
+}
 
 void register_decoder(const heif_decoder_plugin* decoder_plugin)
 {

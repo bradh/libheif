@@ -24,6 +24,7 @@
 #include "box.h"
 
 #include <map>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <map>
@@ -165,6 +166,8 @@ public:
   heif_property_id add_property(heif_item_id id, std::shared_ptr<Box> property, bool essential);
 
   void append_iloc_data(heif_item_id id, const std::vector<uint8_t>& nal_packets, uint8_t construction_method = 0);
+
+  void append_iloc_data(heif_item_id id, const std::vector<uint8_t>& nal_packets, uint8_t construction_method, uint32_t compression_type);
 
   void append_iloc_data_with_4byte_size(heif_item_id id, const uint8_t* data, size_t size);
 

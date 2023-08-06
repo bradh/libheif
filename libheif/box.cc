@@ -37,6 +37,9 @@
 #include "uncompressed_image.h"
 #endif
 
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+#include "metadata_compression.h"
+#endif
 
 Fraction::Fraction(int32_t num, int32_t den)
 {
@@ -1257,7 +1260,8 @@ Error Box_iloc::read_data(const Item& item,
 
 Error Box_iloc::append_data(heif_item_id item_ID,
                             const std::vector<uint8_t>& data,
-                            uint8_t construction_method)
+                            uint8_t construction_method,
+                            uint32_t compression_type)
 {
   // check whether this item ID already exists
 
@@ -1283,7 +1287,19 @@ Error Box_iloc::append_data(heif_item_id item_ID,
   }
 
   Extent extent;
-  extent.data = data;
+  if (compression_type == COMPRESSION_TYPE_NONE) {
+    extent.data = data;
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+  } else if (compression_type == COMPRESSION_TYPE_DEFLATE) {
+    extent.data = deflate(data.data(), (int)data.size());
+#endif
+  } else {
+    std::stringstream sstr;
+    sstr << "Agnostic compression type " << compression_type << " is not implemented yet";
+    return Error(heif_error_Unsupported_feature,
+                 heif_suberror_Unsupported_data_version,
+                 sstr.str());
+  }
 
   if (construction_method == 1) {
     extent.offset = m_idat_offset;

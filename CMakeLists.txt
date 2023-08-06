@@ -184,6 +184,7 @@ option(WITH_REDUCED_VISIBILITY "Reduced symbol visibility in library" ON)
 option(WITH_DEFLATE_HEADER_COMPRESSION OFF)
 option(ENABLE_MULTITHREADING_SUPPORT "Switch off for platforms without multithreading support" ON)
 option(ENABLE_PARALLEL_TILE_DECODING "Will launch multiple decoders to decode tiles in parallel (requires ENABLE_MULTITHREADING_SUPPORT)" ON)
+option(ENABLE_TECHNOLOGY_UNDER_CONSIDERATION "Turn on experimental / developmental MPEG TuC implementations" OFF)
 
 if (WITH_REDUCED_VISIBILITY)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)

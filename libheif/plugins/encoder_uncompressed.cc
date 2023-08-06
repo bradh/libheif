@@ -328,6 +328,46 @@ const struct heif_encoder_plugin* get_encoder_plugin_uncompressed()
   return &encoder_plugin_uncompressed;
 }
 
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+
+static const struct heif_encoder_plugin encoder_plugin_agci
+    {
+        /* plugin_api_version */ 3,
+        /* compression_format */ heif_compression_agnostic_compressed,
+        /* id_name */ "uncompressed",
+        /* priority */ PLUGIN_PRIORITY,
+        /* supports_lossy_compression */ true,
+        /* supports_lossless_compression */ true,
+        /* get_plugin_name */ uncompressed_plugin_name,
+        /* init_plugin */ uncompressed_init_plugin,
+        /* cleanup_plugin */ uncompressed_cleanup_plugin,
+        /* new_encoder */ uncompressed_new_encoder,
+        /* free_encoder */ uncompressed_free_encoder,
+        /* set_parameter_quality */ uncompressed_set_parameter_quality,
+        /* get_parameter_quality */ uncompressed_get_parameter_quality,
+        /* set_parameter_lossless */ uncompressed_set_parameter_lossless,
+        /* get_parameter_lossless */ uncompressed_get_parameter_lossless,
+        /* set_parameter_logging_level */ uncompressed_set_parameter_logging_level,
+        /* get_parameter_logging_level */ uncompressed_get_parameter_logging_level,
+        /* list_parameters */ uncompressed_list_parameters,
+        /* set_parameter_integer */ uncompressed_set_parameter_integer,
+        /* get_parameter_integer */ uncompressed_get_parameter_integer,
+        /* set_parameter_boolean */ uncompressed_set_parameter_boolean,
+        /* get_parameter_boolean */ uncompressed_get_parameter_boolean,
+        /* set_parameter_string */ uncompressed_set_parameter_string,
+        /* get_parameter_string */ uncompressed_get_parameter_string,
+        /* query_input_colorspace */ uncompressed_query_input_colorspace,
+        /* encode_image */ uncompressed_encode_image,
+        /* get_compressed_data */ uncompressed_get_compressed_data,
+        /* query_input_colorspace (v2) */ uncompressed_query_input_colorspace2,
+        /* query_encoded_size (v3) */ nullptr
+    };
+
+const struct heif_encoder_plugin* get_encoder_plugin_agci()
+{
+  return &encoder_plugin_agci;
+}
+#endif
 
 #if 0 // PLUGIN_uncompressed_ENCODER
 heif_plugin_info plugin_info {

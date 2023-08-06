@@ -637,14 +637,18 @@ struct heif_image *createImage_RGBA_planar()
   return image;
 }
 
-static void do_encode(heif_image* input_image, const char* filename, bool check_decode)
+static void do_encode(heif_image* input_image, const char* filename, bool check_decode, uint32_t compression_type = fourcc("none"))
 {
   REQUIRE(input_image != nullptr);
 
   heif_context *ctx = heif_context_alloc();
   heif_encoder *encoder;
   struct heif_error err;
-  err = heif_context_get_encoder_for_format(ctx, heif_compression_uncompressed, &encoder);
+  if (compression_type == fourcc("none")) {
+    err = heif_context_get_encoder_for_format(ctx, heif_compression_uncompressed, &encoder);
+  } else {
+    err = heif_context_get_encoder_for_format(ctx, heif_compression_agnostic_compressed, &encoder);
+  }
   REQUIRE(err.code == heif_error_Ok);
 
   struct heif_encoding_options *options;
@@ -834,3 +838,12 @@ TEST_CASE("Encode RGBA planar")
   heif_image *input_image = createImage_RGBA_planar();
   do_encode(input_image, "encode_rgba_planar.heif", true);
 }
+
+#ifdef ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+TEST_CASE("Encode RGB deflate")
+{
+  heif_image *input_image = createImage_RGB_interleaved();
+  do_encode(input_image, "encode_rgb_defl.heif", false, fourcc("defl"));
+}
+#endif
+

@@ -215,6 +215,27 @@ protected:
 };
 
 
+class Box_cmpC : public FullBox
+{
+public:
+  Box_cmpC()
+  {
+    set_short_type(fourcc("cmpC"));
+  }
+
+  std::string dump(Indent&) const override;
+
+  Error write(StreamWriter& writer) const override;
+
+protected:
+  Error parse(BitstreamRange& range) override;
+
+  uint32_t m_compression_type;
+  bool m_can_decompress_full_sample;
+  uint8_t m_subsample_type;
+};
+
+
 class UncompressedImageCodec
 {
 public:
@@ -231,6 +252,7 @@ public:
                                          const std::shared_ptr<HeifPixelImage>& src_image,
                                          void* encoder_struct,
                                          const struct heif_encoding_options& options,
+                                         const uint32_t compression_type,
                                          std::shared_ptr<HeifContext::Image>& out_image);
 };
 

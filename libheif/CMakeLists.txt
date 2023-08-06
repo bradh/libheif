@@ -111,7 +111,7 @@ else ()
     message("Not compiling 'libsharpyuv'")
 endif ()
 
-if (WITH_DEFLATE_HEADER_COMPRESSION)
+if (WITH_DEFLATE_HEADER_COMPRESSION OR ENABLE_TECHNOLOGY_UNDER_CONSIDERATION)
     find_package(ZLIB REQUIRED)
     if (ZLIB_FOUND)
         target_link_libraries(heif PRIVATE ${ZLIB_LIBRARY})
@@ -135,6 +135,10 @@ if (WITH_UNCOMPRESSED_CODEC)
     target_sources(heif PRIVATE
             uncompressed_image.h
             uncompressed_image.cc)
+endif ()
+
+if (ENABLE_TECHNOLOGY_UNDER_CONSIDERATION)
+    target_compile_definitions(heif PUBLIC ENABLE_TECHNOLOGY_UNDER_CONSIDERATION=1)
 endif ()
 
 write_basic_package_version_file(${PROJECT_NAME}-config-version.cmake COMPATIBILITY ExactVersion)

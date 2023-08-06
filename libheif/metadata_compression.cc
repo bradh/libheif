@@ -22,7 +22,7 @@
 #include "metadata_compression.h"
 
 
-#if WITH_DEFLATE_HEADER_COMPRESSION
+#if WITH_DEFLATE_HEADER_COMPRESSION || ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
 #include <zlib.h>
 #include <cstring>
 

@@ -2282,6 +2282,18 @@ Error HeifContext::encode_image(const std::shared_ptr<HeifPixelImage>& pixel_ima
     }
       break;
 
+#ifdef ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+    case heif_compression_agnostic_compressed: {
+      error = encode_image_as_agci(pixel_image,
+                                   encoder,
+                                   options,
+                                   heif_image_input_class_normal,
+                                   fourcc("defl"),
+                                   out_image);
+    }
+      break;
+#endif
+
     default:
       return Error(heif_error_Encoder_plugin_error, heif_suberror_Unsupported_codec);
   }
@@ -3094,6 +3106,7 @@ Error HeifContext::encode_image_as_uncompressed(const std::shared_ptr<HeifPixelI
                                                                 src_image,
                                                                 encoder->encoder,
                                                                 options,
+                                                                fourcc("none"),
                                                                 out_image);
 
   m_top_level_images.push_back(out_image);
@@ -3124,6 +3137,33 @@ Error HeifContext::encode_image_as_mask(const std::shared_ptr<HeifPixelImage>& s
   return Error::Ok;
 }
 
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+Error HeifContext::encode_image_as_agci(const std::shared_ptr<HeifPixelImage>& src_image,
+                                        struct heif_encoder* encoder,
+                                        const struct heif_encoding_options& options,
+                                        enum heif_image_input_class input_class,
+                                        const uint32_t compression_type,
+                                        std::shared_ptr<Image>& out_image)
+{
+#if WITH_UNCOMPRESSED_CODEC
+  heif_item_id image_id = m_heif_file->add_new_image("agci");
+  out_image = std::make_shared<Image>(this, image_id);
+
+  Error err = UncompressedImageCodec::encode_uncompressed_image(m_heif_file,
+                                                                src_image,
+                                                                encoder->encoder,
+                                                                options,
+                                                                compression_type,
+                                                                out_image);
+
+  m_top_level_images.push_back(out_image);
+  m_all_images[image_id] = out_image;
+#endif
+  //write_image_metadata(src_image, image_id);
+
+  return Error::Ok;
+}
+#endif
 
 void HeifContext::set_primary_image(const std::shared_ptr<Image>& image)
 {

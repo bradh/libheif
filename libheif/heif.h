@@ -406,7 +406,13 @@ enum heif_compression_format
    *
    * See ISO/IEC 23008-12:2022 Section 6.10.2
    */
-  heif_compression_mask = 9
+  heif_compression_mask = 9,
+  /**
+   * Data-agnostic compressed encoding.
+   *
+   * This is Technology under Consideration for ISO/IEC 23001-17.
+  */
+  heif_compression_agnostic_compressed = 10,
 };
 
 enum heif_chroma

@@ -46,6 +46,10 @@ struct encoder_struct_uncompressed
 
 const struct heif_encoder_plugin* get_encoder_plugin_uncompressed();
 
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+const struct heif_encoder_plugin* get_encoder_plugin_agci();
+#endif
+
 #if 0 // PLUGIN_UNCOMPRESSED
 extern "C" {
 MAYBE_UNUSED LIBHEIF_API extern heif_plugin_info plugin_info;

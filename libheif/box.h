@@ -389,10 +389,29 @@ public:
 
   void set_min_version(uint8_t min_version) { m_user_defined_min_version = min_version; }
 
-  // append bitstream data that will be written later (after iloc box)
+  static const uint32_t COMPRESSION_TYPE_NONE = fourcc_to_uint32("none");
+  static const uint32_t COMPRESSION_TYPE_DEFLATE = fourcc_to_uint32("defl");
+
+  /**
+   * Append bitstream data that will be written later.
+   *
+   * The data will be written after the iloc box.
+   *
+   * The data should be post codec (e.g. for HEIC, it is the H.265 bitstream).
+   *
+   * For formats that benefit from subsequent compression (e.g. uncompressed codec per
+   * ISO/IEC 23001-17, or uncompressed audio or metadata), it is also possible
+   * to specify a compression type.
+   *
+   * @param item_ID the item id
+   * @param data the data to write, post encoding
+   * @param construction_method the iloc construction method
+   * @param compression_type the compression to apply post encoding
+  */
   Error append_data(heif_item_id item_ID,
                     const std::vector<uint8_t>& data,
-                    uint8_t construction_method = 0);
+                    uint8_t construction_method = 0,
+                    uint32_t compression_type = COMPRESSION_TYPE_NONE);
 
   // append bitstream data that already has been written (before iloc box)
   // Error write_mdat_before_iloc(heif_image_id item_ID,
