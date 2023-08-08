@@ -223,6 +223,7 @@ public:
     set_short_type(fourcc("cmpC"));
   }
 
+  const char * subsample_type_as_text() const;
   std::string dump(Indent&) const override;
 
   Error write(StreamWriter& writer) const override;

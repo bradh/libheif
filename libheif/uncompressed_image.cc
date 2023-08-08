@@ -174,7 +174,6 @@ Error Box_cmpd::write(StreamWriter& writer) const
   return Error::Ok;
 }
 
-
 Error Box_cmpC::parse(BitstreamRange& range)
 {
   parse_full_box_header(range);
@@ -185,12 +184,19 @@ Error Box_cmpC::parse(BitstreamRange& range)
   return range.get_error();
 }
 
+
+const char * Box_cmpC::subsample_type_as_text() const {
+  return "TODO";
+}
+
 std::string Box_cmpC::dump(Indent& indent) const
 {
   std::ostringstream sstr;
   sstr << Box::dump(indent);
 
-  // TODO
+  // sstr << indent << "compression_type: " << m_compression_type << "\n";
+  // sstr << indent << "can_decompress_full_sample: " << m_can_decompress_full_sample << "\n";
+  // sstr << indent << "subsample_type: " << subsample_type_as_text() << " (" << m_subsample_type << ")" << "\n";
 
   return sstr.str();
 }

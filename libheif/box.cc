@@ -561,6 +561,13 @@ Error Box::read(BitstreamRange& range, std::shared_ptr<Box>* result)
     case fourcc("uncC"):
       box = std::make_shared<Box_uncC>();
       break;
+
+#if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
+    case fourcc("cmpC"):
+      box == std::make_shared<Box_cmpC>();
+      break;
+#endif
+
 #endif
 
     // --- JPEG 2000
@@ -583,6 +590,7 @@ Error Box::read(BitstreamRange& range, std::shared_ptr<Box>* result)
 
     case fourcc("j2kL"):
       box = std::make_shared<Box_j2kL>();
+      break;
 
     // --- mski
       
