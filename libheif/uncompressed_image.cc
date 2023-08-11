@@ -26,6 +26,7 @@
 #include <iostream>
 #include <cassert>
 
+#include "libheif/error.h"
 #include "libheif/heif.h"
 #include "uncompressed_image.h"
 
@@ -184,9 +185,13 @@ Error Box_cmpC::parse(BitstreamRange& range)
   return range.get_error();
 }
 
-
-const char * Box_cmpC::subsample_type_as_text() const {
-  return "TODO";
+const char *Box_cmpC::subsample_type_as_text() const {
+  switch (m_subsample_type) {
+  case 0:
+    return "full image";
+  default:
+    return "unknown";
+  }
 }
 
 std::string Box_cmpC::dump(Indent& indent) const
@@ -194,9 +199,9 @@ std::string Box_cmpC::dump(Indent& indent) const
   std::ostringstream sstr;
   sstr << Box::dump(indent);
 
-  // sstr << indent << "compression_type: " << m_compression_type << "\n";
-  // sstr << indent << "can_decompress_full_sample: " << m_can_decompress_full_sample << "\n";
-  // sstr << indent << "subsample_type: " << subsample_type_as_text() << " (" << m_subsample_type << ")" << "\n";
+  sstr << indent << "compression_type: " << m_compression_type << "\n";
+  sstr << indent << "can_decompress_full_sample: " << m_can_decompress_full_sample << "\n";
+  sstr << indent << "subsample_type: " << subsample_type_as_text() << " (" << (int)m_subsample_type << ")" << "\n";
 
   return sstr.str();
 }
@@ -207,7 +212,7 @@ Error Box_cmpC::write(StreamWriter& writer) const
 
   writer.write32(m_compression_type);
   uint8_t v = m_can_decompress_full_sample ? 0x80 : 0x00;
-  v += m_subsample_type;
+  v |= (m_subsample_type & 0x7f);
   writer.write8(v);
 
   prepend_header(writer, box_start);

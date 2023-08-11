@@ -564,10 +564,9 @@ Error Box::read(BitstreamRange& range, std::shared_ptr<Box>* result)
 
 #if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
     case fourcc("cmpC"):
-      box == std::make_shared<Box_cmpC>();
+      box = std::make_shared<Box_cmpC>();
       break;
 #endif
-
 #endif
 
     // --- JPEG 2000

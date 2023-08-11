@@ -214,12 +214,14 @@ protected:
   uint32_t m_num_tile_rows;
 };
 
-
 class Box_cmpC : public FullBox
 {
 public:
   Box_cmpC()
   {
+    m_compression_type = 0;
+    m_can_decompress_full_sample = false;
+    m_subsample_type = 0;
     set_short_type(fourcc("cmpC"));
   }
 
