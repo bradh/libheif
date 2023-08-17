@@ -175,6 +175,7 @@ Error Box_cmpd::write(StreamWriter& writer) const
   return Error::Ok;
 }
 
+
 Error Box_cmpC::parse(BitstreamRange& range)
 {
   parse_full_box_header(range);
@@ -199,7 +200,7 @@ std::string Box_cmpC::dump(Indent& indent) const
   std::ostringstream sstr;
   sstr << Box::dump(indent);
 
-  sstr << indent << "compression_type: " << m_compression_type << "\n";
+  sstr << indent << "compression_type: " << to_fourcc(m_compression_type) << " (" << m_compression_type << ")\n";
   sstr << indent << "can_decompress_full_sample: " << m_can_decompress_full_sample << "\n";
   sstr << indent << "subsample_type: " << subsample_type_as_text() << " (" << (int)m_subsample_type << ")" << "\n";
 
@@ -214,6 +215,35 @@ Error Box_cmpC::write(StreamWriter& writer) const
   uint8_t v = m_can_decompress_full_sample ? 0x80 : 0x00;
   v |= (m_subsample_type & 0x7f);
   writer.write8(v);
+
+  prepend_header(writer, box_start);
+
+  return Error::Ok;
+}
+
+
+Error Box_smsi::parse(BitstreamRange& range)
+{
+  parse_full_box_header(range);
+  // TODO
+  return range.get_error();
+}
+
+std::string Box_smsi::dump(Indent& indent) const
+{
+  std::ostringstream sstr;
+  sstr << Box::dump(indent);
+
+  // TODO
+
+  return sstr.str();
+}
+
+Error Box_smsi::write(StreamWriter& writer) const
+{
+  size_t box_start = reserve_box_header_space(writer);
+  
+  // TODO
 
   prepend_header(writer, box_start);
 
@@ -1013,7 +1043,10 @@ Error UncompressedImageCodec::encode_uncompressed_image(const std::shared_ptr<He
 #if ENABLE_TECHNOLOGY_UNDER_CONSIDERATION
   if (compression_type != fourcc("none")) {
     std::shared_ptr<Box_cmpC> cmpC = std::make_shared<Box_cmpC>();
-    // TODO: fill cmpC
+    // TODO: fill cmpC properly
+    cmpC->set_compression_type(fourcc("defl"));
+    cmpC->set_can_decompress_full_sample(true);
+    cmpC->set_subsample_type(0);
     heif_file->add_property(out_image->get_id(), cmpC, true);
     // TODO: smsi
   }

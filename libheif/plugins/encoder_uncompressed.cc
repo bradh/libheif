@@ -334,7 +334,7 @@ static const struct heif_encoder_plugin encoder_plugin_agci
     {
         /* plugin_api_version */ 3,
         /* compression_format */ heif_compression_agnostic_compressed,
-        /* id_name */ "uncompressed",
+        /* id_name */ "agnostically compressed",
         /* priority */ PLUGIN_PRIORITY,
         /* supports_lossy_compression */ true,
         /* supports_lossless_compression */ true,

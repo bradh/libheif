@@ -230,12 +230,68 @@ public:
 
   Error write(StreamWriter& writer) const override;
 
+  uint32_t get_compression_type() const
+  {
+    return m_compression_type;
+  }
+
+  void set_compression_type(const uint32_t compression_type)
+  {
+    m_compression_type = compression_type;
+  }
+
+  bool get_can_decompress_full_sample() const
+  {
+    return m_can_decompress_full_sample;
+  }
+
+  void set_can_decompress_full_sample(const bool value)
+  {
+    m_can_decompress_full_sample = value;
+  }
+
+  uint8_t get_subsample_type() const
+  {
+    return m_subsample_type;
+  }
+
+  void set_subsample_type(const uint8_t subsample_type)
+  {
+    m_subsample_type = subsample_type;
+    if (subsample_type == 0) {
+      m_can_decompress_full_sample = true;
+    }
+  }
+
 protected:
   Error parse(BitstreamRange& range) override;
 
   uint32_t m_compression_type;
   bool m_can_decompress_full_sample;
   uint8_t m_subsample_type;
+};
+
+
+class Box_smsi : public FullBox
+{
+public:
+  Box_smsi()
+  {
+    set_short_type(fourcc("smsi"));
+  }
+  
+  struct Subsample
+  {
+    uint32_t offset;
+    uint32_t size;
+  };
+
+  std::string dump(Indent&) const override;
+  Error write(StreamWriter& writer) const override;
+
+protected:
+  Error parse(BitstreamRange& range) override;
+  std::vector<Subsample> m_subsamples;
 };
 
 
