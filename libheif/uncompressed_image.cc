@@ -505,6 +505,9 @@ static bool map_uncompressed_component_to_channel(std::shared_ptr<Box_cmpd> &cmp
   uint16_t component_index = component.component_index;
   uint16_t component_type = cmpd->get_components()[component_index].component_type;
   switch (component_type) {
+  case component_type_monochrome:
+    *channel = heif_channel_Y;
+    return true;
   case component_type_Y:
     *channel = heif_channel_Y;
     return true;

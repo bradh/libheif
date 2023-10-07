@@ -914,9 +914,13 @@ Error HeifContext::interpret_heif_file()
           uint32_t exif_image_id = refs[0];
           auto img_iter = m_all_images.find(exif_image_id);
           if (img_iter == m_all_images.end()) {
+            std::cout << "failed to find image id: " << exif_image_id << std::endl;
+            continue;
+            /*
             return Error(heif_error_Invalid_input,
                          heif_suberror_Nonexisting_item_referenced,
                          "Metadata assigned to non-existing image");
+            */
           }
 
           img_iter->second->add_metadata(metadata);
