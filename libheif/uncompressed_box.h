@@ -31,6 +31,9 @@
 #include <memory>
 
 
+/**
+ * Component definition (cmpd) box.
+ */
 class Box_cmpd : public Box
 {
 public:
@@ -55,7 +58,7 @@ public:
 
   const std::vector<Component>& get_components() const { return m_components; }
 
-  void add_component(Component component)
+  void add_component(const Component& component)
   {
     m_components.push_back(component);
   }

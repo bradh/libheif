@@ -149,7 +149,7 @@ std::string Box_cmpd::dump(Indent& indent) const
   sstr << Box::dump(indent);
 
   for (const auto& component : m_components) {
-    sstr << indent << "component_type: " << component.get_component_type_name() << "\n";
+    sstr << indent << "component_type: " << component.get_component_type_name();
 
     if (component.component_type >= 0x8000) {
       sstr << indent << "| component_type_uri: " << component.component_type_uri << "\n";
