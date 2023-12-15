@@ -163,13 +163,33 @@ TEST_CASE( "uncC" )
     uncC->set_interleave_type(interleave_mode_pixel);
 
     REQUIRE(uncC->get_components().size() == 4);
-
-    // TODO: check components
-
+    Box_uncC::Component component0 = uncC->get_components()[0];
+    REQUIRE(component0.component_index == 0);
+    REQUIRE(component0.component_bit_depth == 8);
+    REQUIRE(component0.component_format == 0);
+    REQUIRE(component0.component_align_size == 0);
+    Box_uncC::Component component1 = uncC->get_components()[1];
+    REQUIRE(component1.component_index == 1);
+    REQUIRE(component1.component_bit_depth == 8);
+    REQUIRE(component1.component_format == 0);
+    REQUIRE(component1.component_align_size == 0);
+    Box_uncC::Component component2 = uncC->get_components()[2];
+    REQUIRE(component2.component_index == 2);
+    REQUIRE(component2.component_bit_depth == 8);
+    REQUIRE(component2.component_format == 0);
+    REQUIRE(component2.component_align_size == 0);
+    Box_uncC::Component component3 = uncC->get_components()[3];
+    REQUIRE(component3.component_index == 3);
+    REQUIRE(component3.component_bit_depth == 8);
+    REQUIRE(component3.component_format == 0);
+    REQUIRE(component3.component_align_size == 0);
     REQUIRE(uncC->get_sampling_type() == 0);
     REQUIRE(uncC->get_interleave_type() == 1);
     REQUIRE(uncC->get_block_size() == 0);
-    // TODO: check bits are all 0
+    REQUIRE(uncC->is_components_little_endian() == false);
+    REQUIRE(uncC->is_block_pad_lsb() == false);
+    REQUIRE(uncC->is_block_little_endian() == false);
+    REQUIRE(uncC->is_pad_unknown() == false);
     REQUIRE(uncC->get_pixel_size() == 0);
     REQUIRE(uncC->get_row_align_size() == 0);
     REQUIRE(uncC->get_tile_align_size() == 0);
