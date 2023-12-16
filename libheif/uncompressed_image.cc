@@ -169,21 +169,21 @@ static Error get_heif_chroma_uncompressed(std::shared_ptr<Box_uncC>& uncC, std::
   }
 
   if (componentSet == ((1 << component_type_monochrome)) || componentSet == ((1 << component_type_monochrome) | (1 << component_type_alpha))) {
-    if (uncC->get_interleave_type() == 0) {
-      // Planar mono or planar mono + alpha
-      *out_chroma = heif_chroma_monochrome;
-      *out_colourspace = heif_colorspace_monochrome;
-    }
+    // mono or mono + alpha input, mono output.
+    *out_chroma = heif_chroma_monochrome;
+    *out_colourspace = heif_colorspace_monochrome;
   }
 
   // TODO: more combinations
 
   if (*out_chroma == heif_chroma_undefined) {
+    printf("unknown chroma\n");
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  "Could not determine chroma");
   }
   else if (*out_colourspace == heif_colorspace_undefined) {
+    printf("unknown colourspace\n");
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  "Could not determine colourspace");
@@ -285,6 +285,9 @@ static bool map_uncompressed_component_to_channel(std::shared_ptr<Box_cmpd> &cmp
   uint16_t component_index = component.component_index;
   uint16_t component_type = cmpd->get_components()[component_index].component_type;
   switch (component_type) {
+  case component_type_monochrome:
+    *channel = heif_channel_Y;
+    return true;
   case component_type_Y:
     *channel = heif_channel_Y;
     return true;
@@ -306,7 +309,10 @@ static bool map_uncompressed_component_to_channel(std::shared_ptr<Box_cmpd> &cmp
   case component_type_alpha:
     *channel = heif_channel_Alpha;
     return true;
+  case component_type_padded:
+    return false;
   default:
+    printf("unmapped component_type: %d\n", component_type);
     return false;
   }
 }
