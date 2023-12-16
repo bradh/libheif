@@ -73,7 +73,12 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                  heif_suberror_Unsupported_data_version,
                  sstr.str());
   }
-  if ((uncC->get_interleave_type() != interleave_mode_tile_component)) {
+  if (((uncC->get_interleave_type() != interleave_mode_tile_component))
+      && ((uncC->get_interleave_type() != interleave_mode_component))
+      && ((uncC->get_interleave_type() != interleave_mode_pixel))
+      && ((uncC->get_interleave_type() != interleave_mode_row))
+    ) {
+    printf("bad interleave: %d\n", uncC->get_interleave_type());
     std::stringstream sstr;
     sstr << "Uncompressed interleave_type of " << ((int) uncC->get_interleave_type()) << " is not implemented yet";
     return Error(heif_error_Unsupported_feature,
@@ -430,11 +435,77 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
       }
     }
   } else {
-    printf("unsupported interleave - we should have detected this earlier\n");
-    assert(false);
+    for (uint32_t tile_row = 0; tile_row < uncC->get_number_of_tile_rows(); tile_row++) {
+      for (uint32_t tile_column = 0; tile_column < uncC->get_number_of_tile_columns(); tile_column++) {
+        if (uncC->get_interleave_type() == interleave_mode_component) {
+          uint64_t bytes_per_component_tile = bytes_per_tile_row * tile_height;
+          for (Box_uncC::Component component : uncC->get_components()) {
+            heif_channel channel;
+            if (!map_uncompressed_component_to_channel(cmpd, component, &channel)) {
+              // skip over the data we are not using
+              src_offset += bytes_per_component_tile;
+              continue;
+            }
+            uint64_t dst_column_offset = tile_column * tile_width;
+            int stride;
+            uint8_t* dst_plane = img->get_plane(channel, &stride);
+            for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
+              uint64_t dst_row_number = tile_row * tile_height + tile_y;
+              uint64_t dst_row_offset = dst_row_number * stride;
+              memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row);
+              src_offset += bytes_per_tile_row;
+            }
+          }
+        } else if (uncC->get_interleave_type() == interleave_mode_pixel) {
+          for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
+            for (uint32_t tile_x = 0; tile_x < tile_width; tile_x++) {
+              for (Box_uncC::Component component : uncC->get_components()) {
+                heif_channel channel;
+                if (!map_uncompressed_component_to_channel(cmpd, component, &channel)) {
+                  // TODO: we need to advance src_offset by the bytes a single component sample, which might not be 1
+                  src_offset += 1;
+                  continue;
+                }
+                int stride;
+                uint8_t* dst_plane = img->get_plane(channel, &stride);
+                uint64_t dst_row_number = tile_row * tile_height + tile_y;
+                uint64_t dst_row_offset = dst_row_number * stride;
+                uint64_t dst_col_number = tile_column * tile_width + tile_x;
+                uint64_t dst_column_offset = dst_col_number; // TODO: bytes per sample
+                dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
+                src_offset += 1; // TODO: bytes per sample
+              }
+            }
+          }
+        } else if (uncC->get_interleave_type() == interleave_mode_row) {
+          for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
+            for (Box_uncC::Component component : uncC->get_components()) {
+              heif_channel channel;
+              if (!map_uncompressed_component_to_channel(cmpd, component, &channel)) {
+                // skip over the data we are not using
+                src_offset += bytes_per_tile_row;
+                continue;
+              }
+              int stride;
+              uint8_t* dst_plane = img->get_plane(channel, &stride);
+              uint64_t dst_row_number = tile_row * tile_height + tile_y;
+              uint64_t dst_row_offset = dst_row_number * stride;
+              uint64_t dst_column_offset = tile_column * tile_width;
+              memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row);
+              src_offset += bytes_per_tile_row;
+            }
+          }
+        } else {
+          printf("bad interleave mode - we should have detected this earlier: %d\n", uncC->get_interleave_type());
+          std::stringstream sstr;
+          sstr << "Uncompressed interleave_type of " << ((int) uncC->get_interleave_type()) << " is not implemented yet";
+          return Error(heif_error_Unsupported_feature,
+                      heif_suberror_Unsupported_data_version,
+                      sstr.str());
+        }
+      }
+    }
   }
-
-  // TODO: other interleave types
 
   return Error::Ok;
 }

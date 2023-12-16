@@ -33,45 +33,37 @@
 #include "test_utils.h"
 #include <string.h>
 
-#define FILES "uncompressed_tile_ABGR_tiled.heif", "uncompressed_tile_RGB_tiled.heif", "uncompressed_tile_RGxB_tiled.heif"
+#define FILES "uncompressed_comp_ABGR.heif", "uncompressed_comp_RGB.heif", "uncompressed_comp_RGB_tiled.heif", \
+  "uncompressed_comp_RGxB.heif", "uncompressed_comp_RGxB_tiled.heif", \
+  "uncompressed_pix_ABGR.heif", "uncompressed_pix_ABGR_tiled.heif", \
+  "uncompressed_pix_RGB.heif", "uncompressed_pix_RGB_tiled.heif", \
+  "uncompressed_pix_RGxB.heif", "uncompressed_pix_RGxB_tiled.heif", \
+  "uncompressed_row_ABGR.heif", "uncompressed_row_ABGR_tiled.heif", \
+  "uncompressed_row_RGB.heif", "uncompressed_row_RGB_tiled.heif", \
+  "uncompressed_row_RGxB.heif", "uncompressed_row_RGxB_tiled.heif", \
+  "uncompressed_tile_ABGR_tiled.heif", \
+  "uncompressed_tile_RGB_tiled.heif", \
+  "uncompressed_tile_RGxB_tiled.heif"
     
 #if 0
-"uncompressed_comp_ABGR.heif", \
-"uncompressed_comp_ABGR_tiled.heif", \
 "uncompressed_comp_B16R16G16.heif", \
 "uncompressed_comp_B16R16G16_tiled.heif", \
 "uncompressed_comp_M.heif", \
 "uncompressed_comp_M_tiled.heif", \
 "uncompressed_comp_p.heif", \
 "uncompressed_comp_p_tiled.heif", \
-"uncompressed_comp_RGB.heif", \
-"uncompressed_comp_RGB_tiled.heif", \
-"uncompressed_comp_RGxB.heif", \
-"uncompressed_comp_RGxB_tiled.heif", \
-"uncompressed_pix_ABGR.heif", \
-"uncompressed_pix_ABGR_tiled.heif", \
 "uncompressed_pix_B16R16G16.heif", \
 "uncompressed_pix_B16R16G16_tiled.heif", \
 "uncompressed_pix_M.heif", \
 "uncompressed_pix_M_tiled.heif", \
 "uncompressed_pix_p.heif", \
 "uncompressed_pix_p_tiled.heif", \
-"uncompressed_pix_RGB.heif", \
-"uncompressed_pix_RGB_tiled.heif", \
-"uncompressed_pix_RGxB.heif", \
-"uncompressed_pix_RGxB_tiled.heif", \
-"uncompressed_row_ABGR.heif", \
-"uncompressed_row_ABGR_tiled.heif", \
 "uncompressed_row_B16R16G16.heif", \
 "uncompressed_row_B16R16G16_tiled.heif", \
 "uncompressed_row_M.heif", \
 "uncompressed_row_M_tiled.heif", \
 "uncompressed_row_p.heif", \
 "uncompressed_row_p_tiled.heif", \
-"uncompressed_row_RGB.heif", \
-"uncompressed_row_RGB_tiled.heif", \
-"uncompressed_row_RGxB.heif", \
-"uncompressed_row_RGxB_tiled.heif", \
 "uncompressed_tile_B16R16G16_tiled.heif", \
 "uncompressed_tile_M_tiled.heif", \
 "uncompressed_tile_p_tiled.heif", \
