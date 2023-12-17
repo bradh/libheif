@@ -119,9 +119,9 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                  heif_suberror_Unsupported_data_version,
                  sstr.str());
   }
-  if (uncC->get_row_align_size() != 0) {
+  if ((uncC->get_row_align_size() != 0) && (uncC->get_interleave_type() == interleave_mode_pixel)) {
     std::stringstream sstr;
-    sstr << "Uncompressed row_align_size of " << ((int) uncC->get_row_align_size()) << " is not implemented yet";
+    sstr << "Uncompressed row_align_size of " << ((int) uncC->get_row_align_size()) << " is not implemented yet for pixel interleave";
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  sstr.str());
@@ -161,11 +161,19 @@ static Error get_heif_chroma_uncompressed(std::shared_ptr<Box_uncC>& uncC, std::
   }
 
   if (componentSet == ((1 << component_type_Y) | (1 << component_type_Cb) | (1 << component_type_Cr))) {
-    if (uncC->get_interleave_type() == 0) {
-      // Planar YCbCr
-      *out_chroma = heif_chroma_444;
-      *out_colourspace = heif_colorspace_YCbCr;
+    switch (uncC->get_sampling_type()) {
+      case sampling_mode_no_subsampling:
+        *out_chroma = heif_chroma_444;
+        break;
+      case sampling_mode_422:
+      case sampling_mode_411:
+        *out_chroma = heif_chroma_422;
+        break;
+      case sampling_mode_420:
+        *out_chroma = heif_chroma_420;
+        break;
     }
+    *out_colourspace = heif_colorspace_YCbCr;
   }
 
   if (componentSet == ((1 << component_type_monochrome)) || componentSet == ((1 << component_type_monochrome) | (1 << component_type_alpha))) {
@@ -410,8 +418,13 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
   const uint32_t tile_width = width / uncC->get_number_of_tile_columns();
   const uint8_t* src = uncompressed_data.data();
   uint64_t src_offset = 0;
-  // TODO: needs to handle multiple bytes per sample, plus row padding
+  // TODO: needs to handle multiple bytes per sample
   uint32_t bytes_per_tile_row = tile_width;
+  if (uncC->get_row_align_size() > 0) {
+    while (bytes_per_tile_row % uncC->get_row_align_size() != 0) {
+      bytes_per_tile_row += 1;
+    }
+  }
   if (uncC->get_interleave_type() == interleave_mode_tile_component) {
     uint64_t bytes_per_component = bytes_per_tile_row * tile_height * uncC->get_number_of_tile_columns() * uncC->get_number_of_tile_rows();
     for (Box_uncC::Component component : uncC->get_components()) {
@@ -508,6 +521,11 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
           return Error(heif_error_Unsupported_feature,
                       heif_suberror_Unsupported_data_version,
                       sstr.str());
+        }
+        if (uncC->get_tile_align_size() != 0) {
+          while (src_offset % uncC->get_tile_align_size() != 0) {
+            src_offset += 1;
+          }
         }
       }
     }
