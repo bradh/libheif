@@ -57,7 +57,12 @@
   "uncompressed_tile_M_tiled.heif"
 
 #define YUV_422_FILES \
-  "uncompressed_comp_YUV_422.heif", "uncompressed_mix_YUV_422.heif"
+  "uncompressed_comp_VUY_422.heif", "uncompressed_comp_YUV_422.heif", "uncompressed_comp_YVU_422.heif", \
+  "uncompressed_mix_VUY_422.heif", "uncompressed_mix_YUV_422.heif", "uncompressed_mix_YVU_422.heif"
+
+#define YUV_420_FILES \
+  "uncompressed_comp_VUY_420.heif", "uncompressed_comp_YUV_420.heif", "uncompressed_comp_YVU_420.heif", \
+  "uncompressed_mix_VUY_420.heif", "uncompressed_mix_YUV_420.heif", "uncompressed_mix_YVU_420.heif"
 
 #define YUV_FILES \
   "uncompressed_comp_YUV_tiled.heif", \
@@ -66,7 +71,7 @@
   "uncompressed_tile_YUV_tiled.heif"
 
 #define ALL_YUV_FILES \
-  YUV_422_FILES, YUV_FILES
+  YUV_422_FILES, YUV_420_FILES, YUV_FILES
 
 #if 0
 "uncompressed_pix_RGB_tiled_row_tile_align.heif", \
@@ -125,7 +130,7 @@ void check_image_handle_size_subsampled(struct heif_context *&context) {
 
 
 TEST_CASE("check image handle size subsampled") {
-  auto file = GENERATE(YUV_422_FILES);
+  auto file = GENERATE(YUV_422_FILES, YUV_420_FILES);
   auto context = get_context_for_test_file(file);
   INFO("file name: " << file);
   check_image_handle_size_subsampled(context);
@@ -462,7 +467,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -481,7 +486,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 255);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -500,7 +505,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 238);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 238);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 255);
@@ -519,7 +524,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 255);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -540,7 +545,7 @@ void check_image_content(struct heif_context *&context) {
   }
   img_plane = heif_image_get_plane_readonly(img, heif_channel_G, &stride);
   REQUIRE(stride == 64);
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0; row < 4; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -559,7 +564,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 128);
@@ -578,7 +583,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 165);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 165);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -597,7 +602,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 130);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 130);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 255);
@@ -616,7 +621,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 0);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -637,7 +642,7 @@ void check_image_content(struct heif_context *&context) {
   }
   img_plane = heif_image_get_plane_readonly(img, heif_channel_B, &stride);
   REQUIRE(stride == 64);
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0; row < 4; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -656,7 +661,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -675,7 +680,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 0);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 255);
@@ -694,7 +699,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 238);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 238);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 255);
@@ -713,7 +718,7 @@ void check_image_content(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 0);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -772,7 +777,7 @@ void check_image_content_mono(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -791,7 +796,7 @@ void check_image_content_mono(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 255);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -810,7 +815,7 @@ void check_image_content_mono(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 238);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 238);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 255);
@@ -829,7 +834,7 @@ void check_image_content_mono(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 255);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 255);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -886,7 +891,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 75);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 75);
@@ -905,7 +910,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 173);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 173);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 29);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 29);
@@ -924,7 +929,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 174);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 174);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 254);
@@ -943,7 +948,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 76);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 76);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -964,7 +969,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
   }
   img_plane = heif_image_get_plane_readonly(img, heif_channel_Cb, &stride);
   REQUIRE(stride == 64);
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0; row < 4; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 84);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 84);
@@ -983,7 +988,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 127);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 85);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 85);
@@ -1002,7 +1007,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 29);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 29);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 254);
@@ -1021,7 +1026,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 163);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 163);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
@@ -1040,7 +1045,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 84);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 84);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
@@ -1061,7 +1066,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
   }
   img_plane = heif_image_get_plane_readonly(img, heif_channel_Cr, &stride);
   REQUIRE(stride == 64);
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0; row < 4; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 254);
@@ -1080,7 +1085,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 127);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 73);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 73);
@@ -1099,7 +1104,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 185);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 185);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 106);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 106);
@@ -1118,7 +1123,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 172);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 172);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
@@ -1137,7 +1142,7 @@ void check_image_content_ycbcr(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 254);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
@@ -1196,7 +1201,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 75);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 75);
@@ -1215,7 +1220,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 173);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 173);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 29);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 29);
@@ -1234,7 +1239,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 174);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 174);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 254);
@@ -1253,7 +1258,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 28])) == 76);
     REQUIRE(((int)(img_plane[stride * row + 29])) == 76);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
     REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
@@ -1274,7 +1279,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
   }
   img_plane = heif_image_get_plane_readonly(img, heif_channel_Cb, &stride);
   REQUIRE(stride == 64);
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0; row < 4; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 84);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 84);
@@ -1293,7 +1298,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 127);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 85);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 85);
@@ -1312,7 +1317,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 29);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 29);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 254);
@@ -1331,7 +1336,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 163);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 163);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
@@ -1350,7 +1355,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 84);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 84);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
@@ -1371,7 +1376,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
   }
   img_plane = heif_image_get_plane_readonly(img, heif_channel_Cr, &stride);
   REQUIRE(stride == 64);
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0; row < 4; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 254);
@@ -1390,7 +1395,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 127);
   }
-  for (int row = 4; row < 7; row++) {
+  for (int row = 4; row < 8; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 73);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 73);
@@ -1409,7 +1414,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 185);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 185);
   }
-  for (int row = 8; row < 11; row++) {
+  for (int row = 8; row < 12; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 106);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 106);
@@ -1428,7 +1433,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 172);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 172);
   }
-  for (int row = 12; row < 15; row++) {
+  for (int row = 12; row < 16; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
@@ -1447,7 +1452,7 @@ void check_image_content_ycbcr422(struct heif_context *&context) {
     REQUIRE(((int)(img_plane[stride * row + 14])) == 254);
     REQUIRE(((int)(img_plane[stride * row + 15])) == 254);
   }
-  for (int row = 16; row < 19; row++) {
+  for (int row = 16; row < 20; row++) {
     INFO("row: " << row);
     REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
     REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
@@ -1478,3 +1483,314 @@ TEST_CASE("check image content YCbCr 4:2:2") {
   check_image_content_ycbcr422(context);
   heif_context_free(context);
 }
+
+void check_image_content_ycbcr420(struct heif_context *&context) {
+  heif_image_handle *handle = get_primary_image_handle(context);
+  heif_image *img = get_primary_image_ycbcr(handle, heif_chroma_420);
+
+  int stride;
+  const uint8_t *img_plane =
+      heif_image_get_plane_readonly(img, heif_channel_Y, &stride);
+  REQUIRE(stride == 64);
+  for (int row = 0; row < 4; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 76);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 76);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 75);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 75);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 16])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 19])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 20])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 23])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 24])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 27])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 28])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 29])) == 128);
+  }
+  for (int row = 4; row < 8; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 75);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 75);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 16])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 19])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 20])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 23])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 24])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 27])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 28])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 29])) == 173);
+  }
+  for (int row = 8; row < 12; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 16])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 19])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 20])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 23])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 24])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 27])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 28])) == 174);
+    REQUIRE(((int)(img_plane[stride * row + 29])) == 174);
+  }
+  for (int row = 12; row < 16; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 16])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 19])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 20])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 23])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 24])) == 174);
+    REQUIRE(((int)(img_plane[stride * row + 27])) == 174);
+    REQUIRE(((int)(img_plane[stride * row + 28])) == 76);
+    REQUIRE(((int)(img_plane[stride * row + 29])) == 76);
+  }
+  for (int row = 16; row < 20; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 225);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 178);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 128);
+    REQUIRE(((int)(img_plane[stride * row + 16])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 19])) == 173);
+    REQUIRE(((int)(img_plane[stride * row + 20])) == 174);
+    REQUIRE(((int)(img_plane[stride * row + 23])) == 174);
+    REQUIRE(((int)(img_plane[stride * row + 24])) == 76);
+    REQUIRE(((int)(img_plane[stride * row + 27])) == 76);
+    REQUIRE(((int)(img_plane[stride * row + 28])) == 75);
+    REQUIRE(((int)(img_plane[stride * row + 29])) == 75);
+  }
+  img_plane = heif_image_get_plane_readonly(img, heif_channel_Cb, &stride);
+  REQUIRE(stride == 64);
+  for (int row = 0; row < 2; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 84);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 84);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 85);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 85);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 127);
+  }
+  for (int row = 2; row < 4; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 85);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 85);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 29);
+  }
+  for (int row = 4; row < 6; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 163);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 163);
+  }
+  for (int row = 6; row < 8; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 163);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 163);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 84);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 84);
+  }
+  for (int row = 8; row < 10; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 170);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 29);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 163);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 163);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 84);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 84);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 85);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 85);
+  }
+  img_plane = heif_image_get_plane_readonly(img, heif_channel_Cr, &stride);
+  REQUIRE(stride == 64);
+  for (int row = 0; row < 2; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 73);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 73);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 106);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 106);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 127);
+  }
+  for (int row = 2; row < 4; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 73);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 73);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 106);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 106);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 185);
+  }
+  for (int row = 4; row < 6; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 106);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 106);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 172);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 172);
+  }
+  for (int row = 6; row < 8; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 172);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 172);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 254);
+  }
+  for (int row = 8; row < 10; row++) {
+    INFO("row: " << row);
+    REQUIRE(((int)(img_plane[stride * row + 0])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 1])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 2])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 3])) == 148);
+    REQUIRE(((int)(img_plane[stride * row + 4])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 5])) == 0);
+    REQUIRE(((int)(img_plane[stride * row + 6])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 7])) == 127);
+    REQUIRE(((int)(img_plane[stride * row + 8])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 9])) == 185);
+    REQUIRE(((int)(img_plane[stride * row + 10])) == 172);
+    REQUIRE(((int)(img_plane[stride * row + 11])) == 172);
+    REQUIRE(((int)(img_plane[stride * row + 12])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 13])) == 254);
+    REQUIRE(((int)(img_plane[stride * row + 14])) == 73);
+    REQUIRE(((int)(img_plane[stride * row + 15])) == 73);
+  }
+
+  heif_image_release(img);
+  heif_image_handle_release(handle);
+}
+
+TEST_CASE("check image content YCbCr 4:2:0") {
+  auto file = GENERATE(YUV_420_FILES);
+  auto context = get_context_for_test_file(file);
+  INFO("file name: " << file);
+  check_image_content_ycbcr420(context);
+  heif_context_free(context);
+}
+

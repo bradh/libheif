@@ -69,6 +69,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
   }
   if ((uncC->get_sampling_type() != sampling_mode_no_subsampling)
       && (uncC->get_sampling_type() != sampling_mode_422)
+      && (uncC->get_sampling_type() != sampling_mode_420)
    ) {
     printf("bad sampling: %d\n", uncC->get_sampling_type());
     std::stringstream sstr;
@@ -456,6 +457,7 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
               src_offset += (bytes_per_tile_row * tile_height);
               continue;
             }
+            uint32_t component_tile_height = tile_height;
             uint64_t bytes_per_component_tile_row = bytes_per_tile_row;
             if ((channel == heif_channel_Cb) || (channel == heif_channel_Cr)) {
               if ((uncC->get_sampling_type() == sampling_mode_422) || (uncC->get_sampling_type() == sampling_mode_420)) {
@@ -463,12 +465,15 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
               } else if (uncC->get_sampling_type() == sampling_mode_411) {
                 bytes_per_tile_row /= 4;
               }
+              if (uncC->get_sampling_type() == sampling_mode_420) {
+                component_tile_height = tile_height / 2;
+              }
             }
             uint64_t dst_column_offset = tile_column * tile_width;
             int stride;
             uint8_t* dst_plane = img->get_plane(channel, &stride);
-            for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
-              uint64_t dst_row_number = tile_row * tile_height + tile_y;
+            for (uint32_t tile_y = 0; tile_y < component_tile_height; tile_y++) {
+              uint64_t dst_row_number = tile_row * component_tile_height + tile_y;
               uint64_t dst_row_offset = dst_row_number * stride;
               memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_component_tile_row);
               src_offset += bytes_per_component_tile_row;
