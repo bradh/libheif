@@ -95,8 +95,88 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                  sstr.str());
   }
   // TODO: throw error for sampling type != 0 and pixel, row or tile_component
-  // TODO: throw error for sampling type = 0 and mixed
-  // TODO: throw error for sampling type = 0 or 4:2:0 and multi-y
+  // Validity checks per ISO/IEC 23001-17 Section 5.2.1.5.3
+  if (uncC->get_sampling_type() == sampling_mode_422) {
+    // We check Y Cb and Cr appear in the chroma test
+    // TODO: error for tile width not multiple of 2
+    if ((uncC->get_interleave_type() != interleave_mode_component)
+        && (uncC->get_interleave_type() != interleave_mode_mixed)
+        && (uncC->get_interleave_type() != interleave_mode_multi_y))
+    {
+      std::stringstream sstr;
+      sstr << "YCbCr 4:2:2 subsampling is only valid with component, mixed or multi-Y interleave mode (ISO/IEC 23001-17 5.2.1.5.3).";
+      return Error(heif_error_Invalid_input,
+                  heif_suberror_Invalid_parameter_value,
+                  sstr.str());
+    }
+    if ((uncC->get_row_align_size() != 0) && (uncC->get_interleave_type() == interleave_mode_component)) {
+      if (uncC->get_row_align_size() % 2 != 0) {
+        std::stringstream sstr;
+        sstr << "YCbCr 4:2:2 subsampling with component interleave requires row_align_size to be a multiple of 2 (ISO/IEC 23001-17 5.2.1.5.3).";
+        return Error(heif_error_Invalid_input,
+                  heif_suberror_Invalid_parameter_value,
+                  sstr.str());
+      }
+    }
+    if (uncC->get_tile_align_size() != 0) {
+      if (uncC->get_tile_align_size() % 2 != 0) {
+        std::stringstream sstr;
+        sstr << "YCbCr 4:2:2 subsampling requires tile_align_size to be a multiple of 2 (ISO/IEC 23001-17 5.2.1.5.3).";
+        return Error(heif_error_Invalid_input,
+                  heif_suberror_Invalid_parameter_value,
+                  sstr.str());
+      }
+    }
+  }
+  // Validity checks per ISO/IEC 23001-17 Section 5.2.1.5.4
+  if (uncC->get_sampling_type() == sampling_mode_422) {
+    // We check Y Cb and Cr appear in the chroma test
+    // TODO: error for tile width not multiple of 2
+    if ((uncC->get_interleave_type() != interleave_mode_component)
+        && (uncC->get_interleave_type() != interleave_mode_mixed))
+    {
+      std::stringstream sstr;
+      sstr << "YCbCr 4:2:0 subsampling is only valid with component or mixed interleave mode (ISO/IEC 23001-17 5.2.1.5.4).";
+      return Error(heif_error_Invalid_input,
+                  heif_suberror_Invalid_parameter_value,
+                  sstr.str());
+    }
+    if ((uncC->get_row_align_size() != 0) && (uncC->get_interleave_type() == interleave_mode_component)) {
+      if (uncC->get_row_align_size() % 2 != 0) {
+        std::stringstream sstr;
+        sstr << "YCbCr 4:2:2 subsampling with component interleave requires row_align_size to be a multiple of 2 (ISO/IEC 23001-17 5.2.1.5.4).";
+        return Error(heif_error_Invalid_input,
+                  heif_suberror_Invalid_parameter_value,
+                  sstr.str());
+      }
+    }
+    if (uncC->get_tile_align_size() != 0) {
+      if (uncC->get_tile_align_size() % 4 != 0) {
+        std::stringstream sstr;
+        sstr << "YCbCr 4:2:2 subsampling requires tile_align_size to be a multiple of 4 (ISO/IEC 23001-17 5.2.1.5.3).";
+        return Error(heif_error_Invalid_input,
+                  heif_suberror_Invalid_parameter_value,
+                  sstr.str());
+      }
+    }
+  }
+  if ((uncC->get_interleave_type() == interleave_mode_mixed) && (uncC->get_sampling_type() == sampling_mode_no_subsampling))
+  {
+    std::stringstream sstr;
+    sstr << "Interleave interleave mode is not valid with subsampling mode (ISO/IEC 23001-17 5.2.1.6.4).";
+    return Error(heif_error_Invalid_input,
+                heif_suberror_Invalid_parameter_value,
+                sstr.str());
+  }
+  if ((uncC->get_interleave_type() == interleave_mode_multi_y)
+    && ((uncC->get_sampling_type() != sampling_mode_422) && (uncC->get_sampling_type() != sampling_mode_411)))
+  {
+    std::stringstream sstr;
+    sstr << "Multi-Y interleave mode is only valid with 4:2:2 and 4:1:1 subsampling modes (ISO/IEC 23001-17 5.2.1.6.7).";
+    return Error(heif_error_Invalid_input,
+                heif_suberror_Invalid_parameter_value,
+                sstr.str());
+  }
   // TODO: throw error if mixed and Cb and Cr are not adjacent.
 
   if (uncC->get_block_size() != 0) {
