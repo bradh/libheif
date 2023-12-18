@@ -727,8 +727,7 @@ TEST_CASE("Encode YCBCr")
 {
   // TODO: 422 and 420
   heif_image *input_image = createImage_YCbCr();
-  // TODO: turn back on decode
-  do_encode(input_image, "encode_YCbCr.heif", false);
+  do_encode(input_image, "encode_YCbCr.heif", true);
 }
 
 

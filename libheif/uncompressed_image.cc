@@ -46,6 +46,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                    sstr.str());
     }
     if (component.component_bit_depth != 8) {
+      printf("unsupported component bit depth for index: %d, value: %d\n", component_index, component.component_bit_depth);
       std::stringstream sstr;
       sstr << "Uncompressed image with component_bit_depth " << ((int) component.component_bit_depth) << " is not implemented yet";
       return Error(heif_error_Unsupported_feature,
@@ -53,6 +54,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                    sstr.str());
     }
     if (component.component_format != component_format_unsigned) {
+      printf("unsupported component format\n");
       std::stringstream sstr;
       sstr << "Uncompressed image with component_format " << ((int) component.component_format) << " is not implemented yet";
       return Error(heif_error_Unsupported_feature,
@@ -60,6 +62,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                    sstr.str());
     }
     if (component.component_align_size >= 2) {
+      printf("unsupported component_align_size\n");
       std::stringstream sstr;
       sstr << "Uncompressed image with component_align_size " << ((int) component.component_align_size) << " is not implemented yet";
       return Error(heif_error_Unsupported_feature,
@@ -97,6 +100,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
   // TODO: throw error if mixed and Cb and Cr are not adjacent.
 
   if (uncC->get_block_size() != 0) {
+    printf("unsupported block size\n");
     std::stringstream sstr;
     sstr << "Uncompressed block_size of " << ((int) uncC->get_block_size()) << " is not implemented yet";
     return Error(heif_error_Unsupported_feature,
@@ -104,26 +108,31 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                  sstr.str());
   }
   if (uncC->is_components_little_endian()) {
+    printf("unsupported components LE\n");
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  "Uncompressed components_little_endian == 1 is not implemented yet");
   }
   if (uncC->is_block_pad_lsb()) {
+    printf("unsupported block pad LSB\n");
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  "Uncompressed block_pad_lsb == 1 is not implemented yet");
   }
   if (uncC->is_block_little_endian()) {
+    printf("unsupported block LE\n");
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  "Uncompressed block_little_endian == 1 is not implemented yet");
   }
   if (uncC->is_block_reversed()) {
+    printf("unsupported block reversed\n");
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  "Uncompressed block_reversed == 1 is not implemented yet");
   }
   if (uncC->get_pixel_size() != 0) {
+    printf("unsupported pixel size\n");
     std::stringstream sstr;
     sstr << "Uncompressed pixel_size of " << ((int) uncC->get_pixel_size()) << " is not implemented yet";
     return Error(heif_error_Unsupported_feature,
@@ -177,7 +186,6 @@ static Error get_heif_chroma_uncompressed(std::shared_ptr<Box_uncC>& uncC, std::
         *out_chroma = heif_chroma_444;
         break;
       case sampling_mode_422:
-      case sampling_mode_411:
         *out_chroma = heif_chroma_422;
         break;
       case sampling_mode_420:
@@ -462,8 +470,6 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
             if ((channel == heif_channel_Cb) || (channel == heif_channel_Cr)) {
               if ((uncC->get_sampling_type() == sampling_mode_422) || (uncC->get_sampling_type() == sampling_mode_420)) {
                 bytes_per_component_tile_row /= 2;
-              } else if (uncC->get_sampling_type() == sampling_mode_411) {
-                bytes_per_tile_row /= 4;
               }
               if (uncC->get_sampling_type() == sampling_mode_420) {
                 component_tile_height = tile_height / 2;
@@ -617,14 +623,14 @@ Error fill_cmpd_and_uncC(std::shared_ptr<Box_cmpd>& cmpd, std::shared_ptr<Box_un
     cmpd->add_component(cbComponent);
     Box_cmpd::Component crComponent = {component_type_Cr};
     cmpd->add_component(crComponent);
-    int bpp_y = image->get_bits_per_pixel(heif_channel_Y);
-    Box_uncC::Component component0 = {0, (uint8_t)(bpp_y - 1), component_format_unsigned, 0};
+    u_int8_t bpp_y = image->get_bits_per_pixel(heif_channel_Y);
+    Box_uncC::Component component0 = {0, bpp_y, component_format_unsigned, 0};
     uncC->add_component(component0);
-    int bpp_cb = image->get_bits_per_pixel(heif_channel_Cb);
-    Box_uncC::Component component1 = {1, (uint8_t)(bpp_cb - 1), component_format_unsigned, 0};
+    u_int8_t bpp_cb = image->get_bits_per_pixel(heif_channel_Cb);
+    Box_uncC::Component component1 = {1, bpp_cb, component_format_unsigned, 0};
     uncC->add_component(component1);
-    int bpp_cr = image->get_bits_per_pixel(heif_channel_Cr);
-    Box_uncC::Component component2 = {2, (uint8_t)(bpp_cr - 1), component_format_unsigned, 0};
+    u_int8_t bpp_cr = image->get_bits_per_pixel(heif_channel_Cr);
+    Box_uncC::Component component2 = {2, bpp_cr, component_format_unsigned, 0};
     uncC->add_component(component2);
     if (image->get_chroma_format() == heif_chroma_444)
     {
