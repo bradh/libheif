@@ -45,7 +45,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                    heif_suberror_Unsupported_data_version,
                    sstr.str());
     }
-    if (component.component_bit_depth != 8) {
+    if ((component.component_bit_depth != 8) && (component.component_bit_depth != 16)) {
       printf("unsupported component bit depth for index: %d, value: %d\n", component_index, component.component_bit_depth);
       std::stringstream sstr;
       sstr << "Uncompressed image with component_bit_depth " << ((int) component.component_bit_depth) << " is not implemented yet";
@@ -94,7 +94,6 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                  heif_suberror_Unsupported_data_version,
                  sstr.str());
   }
-  // TODO: throw error for sampling type != 0 and pixel, row or tile_component
   // Validity checks per ISO/IEC 23001-17 Section 5.2.1.5.3
   if (uncC->get_sampling_type() == sampling_mode_422) {
     // We check Y Cb and Cr appear in the chroma test
@@ -507,19 +506,27 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
     }
   }
   if (uncC->get_interleave_type() == interleave_mode_tile_component) {
-    uint64_t bytes_per_component = bytes_per_tile_row * tile_height * uncC->get_number_of_tile_columns() * uncC->get_number_of_tile_rows();
     for (Box_uncC::Component component : uncC->get_components()) {
       heif_channel channel;
       if (!map_uncompressed_component_to_channel(cmpd, component, &channel)) {
+        // TODO: should include multiple bytes per component sample (assumes 1 right now)
+        uint64_t bytes_per_component = bytes_per_tile_row * tile_height * uncC->get_number_of_tile_columns() * uncC->get_number_of_tile_rows();
         // skip over the component we are not handling.
         src_offset += bytes_per_component;
         continue;
+      }
+      uint32_t bytes_per_component_sample = 1;
+      if (component.component_bit_depth > 8) {
+        // HACK
+        bytes_per_component_sample = 2;
+        bytes_per_tile_row = bytes_per_component_sample * tile_width;
       }
       int stride;
       uint8_t* dst_plane = img->get_plane(channel, &stride);
       for (uint32_t tile_row = 0; tile_row < uncC->get_number_of_tile_rows(); tile_row++) {
         for (uint32_t tile_column = 0; tile_column < uncC->get_number_of_tile_columns(); tile_column++) {
-          uint64_t dst_column_offset = tile_column * tile_width;
+          // TODO: I think we need to handle source width and destination width separately
+          uint64_t dst_column_offset = tile_column * tile_width * bytes_per_component_sample;
           for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
             uint64_t dst_row_number = tile_row * tile_height + tile_y;
             uint64_t dst_row_offset = dst_row_number * stride;
