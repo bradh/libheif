@@ -407,7 +407,9 @@ static bool map_uncompressed_component_to_channel(std::shared_ptr<Box_cmpd> &cmp
 
 class AbstractDecoder
 {
+public:
   virtual Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) = 0;
+  virtual ~AbstractDecoder() = default;
 protected:
   AbstractDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
     m_width(width),
@@ -428,8 +430,15 @@ protected:
   uint32_t tile_width;
 };
 
+static uint32_t roundUpTo(uint32_t value, uint32_t alignment) {
+    uint32_t residual = value % alignment;
+    if (residual == 0) {
+      return value;
+    }
+    return (value + alignment - residual);
+}
 
-class ComponentInterleaveDecoder : AbstractDecoder
+class ComponentInterleaveDecoder : public AbstractDecoder
 {
 public:
   ComponentInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
@@ -442,9 +451,7 @@ public:
     // TODO: needs to handle multiple bytes per sample
     uint32_t bytes_per_tile_row = tile_width;
     if (m_uncC->get_row_align_size() > 0) {
-      while (bytes_per_tile_row % m_uncC->get_row_align_size() != 0) {
-        bytes_per_tile_row += 1;
-      }
+      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
     }
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
@@ -487,7 +494,7 @@ public:
   }
 };
 
-class PixelInterleaveDecoder : AbstractDecoder
+class PixelInterleaveDecoder : public AbstractDecoder
 {
 public:
   PixelInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
@@ -500,9 +507,7 @@ public:
     // TODO: needs to handle multiple bytes per sample
     uint32_t bytes_per_tile_row = tile_width;
     if (m_uncC->get_row_align_size() > 0) {
-      while (bytes_per_tile_row % m_uncC->get_row_align_size() != 0) {
-        bytes_per_tile_row += 1;
-      }
+      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
     }
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
@@ -537,7 +542,7 @@ public:
   }
 };
 
-class MixedInterleaveDecoder : AbstractDecoder
+class MixedInterleaveDecoder : public AbstractDecoder
 {
 public:
   MixedInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
@@ -550,9 +555,7 @@ public:
     // TODO: needs to handle multiple bytes per sample
     uint32_t bytes_per_tile_row = tile_width;
     if (m_uncC->get_row_align_size() > 0) {
-      while (bytes_per_tile_row % m_uncC->get_row_align_size() != 0) {
-        bytes_per_tile_row += 1;
-      }
+      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
     }
     int cb_stride;
     uint8_t* cb_dst_plane = img->get_plane(heif_channel_Cb, &cb_stride);
@@ -629,8 +632,7 @@ public:
 };
 
 
-
-class RowInterleaveDecoder : AbstractDecoder
+class RowInterleaveDecoder : public AbstractDecoder
 {
 public:
   RowInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
@@ -643,9 +645,7 @@ public:
     // TODO: needs to handle multiple bytes per sample
     uint32_t bytes_per_tile_row = tile_width;
     if (m_uncC->get_row_align_size() > 0) {
-      while (bytes_per_tile_row % m_uncC->get_row_align_size() != 0) {
-        bytes_per_tile_row += 1;
-      }
+      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
     }
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
@@ -677,7 +677,7 @@ public:
   }
 };
 
-class TileComponentInterleaveDecoder : AbstractDecoder
+class TileComponentInterleaveDecoder : public AbstractDecoder
 {
 public:
   TileComponentInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
@@ -732,6 +732,23 @@ public:
     return Error::Ok;
   }
 };
+
+static AbstractDecoder* makeDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC)
+{
+  if (uncC->get_interleave_type() == interleave_mode_component) {
+    return new ComponentInterleaveDecoder(width, height, cmpd, uncC);
+  } else if (uncC->get_interleave_type() == interleave_mode_pixel) {
+    return new PixelInterleaveDecoder(width, height, cmpd, uncC);
+  } else if (uncC->get_interleave_type() == interleave_mode_mixed) {
+    return new MixedInterleaveDecoder(width, height, cmpd, uncC);
+  } else if (uncC->get_interleave_type() == interleave_mode_row) {
+    return new RowInterleaveDecoder(width, height, cmpd, uncC);
+  } else if (uncC->get_interleave_type() == interleave_mode_tile_component) {
+    return new TileComponentInterleaveDecoder(width, height, cmpd, uncC);
+  } else {
+    return nullptr;
+  }
+}
 
 Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<const HeifFile>& heif_file,
                                                         heif_item_id ID,
@@ -824,22 +841,11 @@ Error UncompressedImageCodec::decode_uncompressed_image(const std::shared_ptr<co
     }
   }
 
-  // TODO: factory method
-  if (uncC->get_interleave_type() == interleave_mode_component) {
-    ComponentInterleaveDecoder decoder(width, height, cmpd, uncC);
-    return decoder.decode(uncompressed_data, img);
-  } else if (uncC->get_interleave_type() == interleave_mode_pixel) {
-    PixelInterleaveDecoder decoder(width, height, cmpd, uncC);
-    return decoder.decode(uncompressed_data, img);
-  } else if (uncC->get_interleave_type() == interleave_mode_mixed) {
-    MixedInterleaveDecoder decoder(width, height, cmpd, uncC);
-    return decoder.decode(uncompressed_data, img);
-  } else if (uncC->get_interleave_type() == interleave_mode_row) {
-    RowInterleaveDecoder decoder(width, height, cmpd, uncC);
-    return decoder.decode(uncompressed_data, img);
-  } else if (uncC->get_interleave_type() == interleave_mode_tile_component) {
-    TileComponentInterleaveDecoder decoder(width, height, cmpd, uncC);
-    return decoder.decode(uncompressed_data, img);
+  AbstractDecoder *decoder = makeDecoder(width, height, cmpd, uncC);
+  if (decoder != nullptr) {
+    Error result = decoder->decode(uncompressed_data, img);
+    delete decoder;
+    return result;
   } else {
     printf("bad interleave mode - we should have detected this earlier: %d\n", uncC->get_interleave_type());
     std::stringstream sstr;
