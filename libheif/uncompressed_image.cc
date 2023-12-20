@@ -441,6 +441,8 @@ protected:
   {
     uint8_t* dst_plane;
     int dst_plane_stride;
+    uint32_t tile_width;
+    uint32_t tile_height;
     uint32_t bytes_per_component_sample;
     uint32_t bytes_per_tile_row_src;
     uint32_t bytes_per_tile_row_dest;
@@ -455,12 +457,22 @@ protected:
       ChannelListEntry entry;
       entry.use_channel = map_uncompressed_component_to_channel(m_cmpd, component, &channel);
       entry.dst_plane = img->get_plane(channel, &(entry.dst_plane_stride));
+      entry.tile_width = tile_width;
+      entry.tile_height = tile_height;
+      if ((channel == heif_channel_Cb) || (channel == heif_channel_Cr)) {
+        if (m_uncC->get_sampling_type() == sampling_mode_422) {
+          entry.tile_width /= 2;
+        } else if (m_uncC->get_sampling_type() == sampling_mode_420) {
+          entry.tile_width /= 2;
+          entry.tile_height /= 2;
+        }
+      }
       entry.bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
-      entry.bytes_per_tile_row_src = tile_width * entry.bytes_per_component_sample;
+      entry.bytes_per_tile_row_src = entry.tile_width * entry.bytes_per_component_sample;
       if (m_uncC->get_row_align_size() > 0) {
         entry.bytes_per_tile_row_src = roundUpTo(entry.bytes_per_tile_row_src, m_uncC->get_row_align_size());
       }
-      entry.bytes_per_tile_row_dest = tile_width * entry.bytes_per_component_sample;
+      entry.bytes_per_tile_row_dest = entry.tile_width * entry.bytes_per_component_sample;
       channelList.push_back(entry);
     }
   }
@@ -495,6 +507,7 @@ public:
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
+          // TODO: there is probably a cleaner way to do this...
           while (src_offset % m_uncC->get_tile_align_size() != 0) {
             src_offset += 1;
           }
@@ -516,42 +529,25 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
-    // TODO: needs to handle multiple bytes per sample
-    uint32_t bytes_per_tile_row = tile_width;
-    if (m_uncC->get_row_align_size() > 0) {
-      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
-    }
+    buildChannelList(img);
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
-        for (Box_uncC::Component component : m_uncC->get_components()) {
-          heif_channel channel;
-          if (!map_uncompressed_component_to_channel(m_cmpd, component, &channel)) {
+        for (ChannelListEntry &entry : channelList) {
+          if (!entry.use_channel) {
             // skip over the data we are not using
-            src_offset += (bytes_per_tile_row * tile_height);
+            src_offset += (entry.bytes_per_tile_row_src * tile_height);
             continue;
           }
-          uint32_t component_tile_height = tile_height;
-          uint64_t bytes_per_component_tile_row = bytes_per_tile_row;
-          // TODO: split this up so there are different implementations
-          if ((channel == heif_channel_Cb) || (channel == heif_channel_Cr)) {
-            if ((m_uncC->get_sampling_type() == sampling_mode_422) || (m_uncC->get_sampling_type() == sampling_mode_420)) {
-              bytes_per_component_tile_row /= 2;
-            }
-            if (m_uncC->get_sampling_type() == sampling_mode_420) {
-              component_tile_height = tile_height / 2;
-            }
-          }
-          uint64_t dst_column_offset = tile_column * tile_width;
-          int stride;
-          uint8_t* dst_plane = img->get_plane(channel, &stride);
-          for (uint32_t tile_y = 0; tile_y < component_tile_height; tile_y++) {
-            uint64_t dst_row_number = tile_row * component_tile_height + tile_y;
-            uint64_t dst_row_offset = dst_row_number * stride;
-            memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_component_tile_row);
-            src_offset += bytes_per_component_tile_row;
+          uint64_t dst_column_offset = tile_column * entry.bytes_per_tile_row_dest;
+          for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+            uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
+            uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
+            memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
+            src_offset += entry.bytes_per_tile_row_src;
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
+          // TODO: there is probably a cleaner way to do this...
           while (src_offset % m_uncC->get_tile_align_size() != 0) {
             src_offset += 1;
           }
@@ -578,20 +574,19 @@ public:
         for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
           for (uint32_t tile_x = 0; tile_x < tile_width; tile_x++) {
             for (ChannelListEntry &entry : channelList) {
-              if (!entry.use_channel) {
-                src_offset += entry.bytes_per_component_sample;
-                continue;
+              if (entry.use_channel) {
+                uint64_t dst_row_number = tile_row * tile_height + tile_y;
+                uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
+                uint64_t dst_col_number = tile_column * tile_width + tile_x;
+                uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
+                memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_component_sample);
               }
-              uint64_t dst_row_number = tile_row * tile_height + tile_y;
-              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-              uint64_t dst_col_number = tile_column * tile_width + tile_x;
-              uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
-              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_component_sample);
               src_offset += entry.bytes_per_component_sample;
             }
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
+          // TODO: there is probably a cleaner way to do this...
           while (src_offset % m_uncC->get_tile_align_size() != 0) {
             src_offset += 1;
           }
