@@ -41,14 +41,11 @@
   "uncompressed_tile_RGB_tiled_row_tile_align.heif", \
   "uncompressed_tile_RGxB_tiled.heif"
 
-// TODO: these need to be turned back on (and tile_ moved to the bottom)
 #define FILES_16BIT_RGB \
   "uncompressed_comp_B16R16G16.heif", "uncompressed_comp_B16R16G16_tiled.heif", \
+  "uncompressed_pix_B16R16G16.heif", "uncompressed_pix_B16R16G16_tiled.heif", \
   "uncompressed_row_B16R16G16.heif", "uncompressed_row_B16R16G16_tiled.heif", \
   "uncompressed_tile_B16R16G16_tiled.heif"
-  // "uncompressed_pix_B16R16G16.heif", "uncompressed_pix_B16R16G16_tiled.heif",
-  
-  
 
 #define FILES FILES_RGB, FILES_16BIT_RGB
 

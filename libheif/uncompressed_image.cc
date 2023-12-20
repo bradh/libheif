@@ -441,6 +441,7 @@ protected:
   {
     uint8_t* dst_plane;
     int dst_plane_stride;
+    uint32_t bytes_per_component_sample;
     uint32_t bytes_per_tile_row_src;
     uint32_t bytes_per_tile_row_dest;
     bool use_channel;
@@ -454,12 +455,12 @@ protected:
       ChannelListEntry entry;
       entry.use_channel = map_uncompressed_component_to_channel(m_cmpd, component, &channel);
       entry.dst_plane = img->get_plane(channel, &(entry.dst_plane_stride));
-      uint32_t bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
-      entry.bytes_per_tile_row_src = tile_width * bytes_per_component_sample;
+      entry.bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
+      entry.bytes_per_tile_row_src = tile_width * entry.bytes_per_component_sample;
       if (m_uncC->get_row_align_size() > 0) {
         entry.bytes_per_tile_row_src = roundUpTo(entry.bytes_per_tile_row_src, m_uncC->get_row_align_size());
       }
-      entry.bytes_per_tile_row_dest = tile_width * bytes_per_component_sample;
+      entry.bytes_per_tile_row_dest = tile_width * entry.bytes_per_component_sample;
       channelList.push_back(entry);
     }
   }
@@ -572,30 +573,21 @@ public:
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
     buildChannelList(img);
-    // TODO: needs to handle multiple bytes per sample
-    uint32_t bytes_per_tile_row = tile_width;
-    if (m_uncC->get_row_align_size() > 0) {
-      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
-    }
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
           for (uint32_t tile_x = 0; tile_x < tile_width; tile_x++) {
-            for (Box_uncC::Component component : m_uncC->get_components()) {
-              heif_channel channel;
-              if (!map_uncompressed_component_to_channel(m_cmpd, component, &channel)) {
-                // TODO: we need to advance src_offset by the bytes a single component sample, which might not be 1
-                src_offset += 1;
+            for (ChannelListEntry &entry : channelList) {
+              if (!entry.use_channel) {
+                src_offset += entry.bytes_per_component_sample;
                 continue;
               }
-              int stride;
-              uint8_t* dst_plane = img->get_plane(channel, &stride);
               uint64_t dst_row_number = tile_row * tile_height + tile_y;
-              uint64_t dst_row_offset = dst_row_number * stride;
+              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
               uint64_t dst_col_number = tile_column * tile_width + tile_x;
-              uint64_t dst_column_offset = dst_col_number; // TODO: bytes per sample
-              dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-              src_offset += 1; // TODO: bytes per sample
+              uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
+              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_component_sample);
+              src_offset += entry.bytes_per_component_sample;
             }
           }
         }
