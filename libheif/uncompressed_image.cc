@@ -405,6 +405,14 @@ static bool map_uncompressed_component_to_channel(std::shared_ptr<Box_cmpd> &cmp
   }
 }
 
+static uint32_t roundUpTo(uint32_t value, uint32_t alignment) {
+    uint32_t residual = value % alignment;
+    if (residual == 0) {
+      return value;
+    }
+    return (value + alignment - residual);
+}
+
 class AbstractDecoder
 {
 public:
@@ -428,15 +436,34 @@ protected:
   // TODO: see if we can make this const
   uint32_t tile_height;
   uint32_t tile_width;
-};
 
-static uint32_t roundUpTo(uint32_t value, uint32_t alignment) {
-    uint32_t residual = value % alignment;
-    if (residual == 0) {
-      return value;
+  struct ChannelListEntry
+  {
+    uint8_t* dst_plane;
+    int dst_plane_stride;
+    uint32_t bytes_per_tile_row_src;
+    uint32_t bytes_per_tile_row_dest;
+    bool use_channel;
+  };
+
+  std::vector<ChannelListEntry> channelList;
+
+  void buildChannelList(std::shared_ptr<HeifPixelImage>& img) {     
+    for (Box_uncC::Component component : m_uncC->get_components()) {
+      heif_channel channel;
+      ChannelListEntry entry;
+      entry.use_channel = map_uncompressed_component_to_channel(m_cmpd, component, &channel);
+      entry.dst_plane = img->get_plane(channel, &(entry.dst_plane_stride));
+      uint32_t bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
+      entry.bytes_per_tile_row_src = tile_width * bytes_per_component_sample;
+      if (m_uncC->get_row_align_size() > 0) {
+        entry.bytes_per_tile_row_src = roundUpTo(entry.bytes_per_tile_row_src, m_uncC->get_row_align_size());
+      }
+      entry.bytes_per_tile_row_dest = tile_width * bytes_per_component_sample;
+      channelList.push_back(entry);
     }
-    return (value + alignment - residual);
-}
+  }
+};
 
 class ComponentInterleaveDecoder : public AbstractDecoder
 {
@@ -642,32 +669,22 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+    buildChannelList(img);
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
-          for (Box_uncC::Component component : m_uncC->get_components()) {
-            heif_channel channel;
-            uint32_t bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
-            uint32_t bytes_per_tile_row_src = tile_width * bytes_per_component_sample;
-            uint32_t bytes_per_tile_row_dest = tile_width * bytes_per_component_sample;
-            if (m_uncC->get_row_align_size() > 0) {
-              bytes_per_tile_row_src = roundUpTo(bytes_per_tile_row_src, m_uncC->get_row_align_size());
+          for (ChannelListEntry &entry : channelList) {
+            if (entry.use_channel) {
+              uint64_t dst_row_number = tile_row * tile_height + tile_y;
+              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
+              uint64_t dst_column_offset = tile_column * entry.bytes_per_tile_row_dest;
+              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
             }
-            if (!map_uncompressed_component_to_channel(m_cmpd, component, &channel)) {
-              // skip over the data we are not using
-              src_offset += bytes_per_tile_row_src;
-              continue;
-            }
-            int stride;
-            uint8_t* dst_plane = img->get_plane(channel, &stride);
-            uint64_t dst_row_number = tile_row * tile_height + tile_y;
-            uint64_t dst_row_offset = dst_row_number * stride;
-            uint64_t dst_column_offset = tile_column * bytes_per_tile_row_dest;
-            memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row_dest);
-            src_offset += bytes_per_tile_row_src;
+            src_offset += entry.bytes_per_tile_row_src;
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
+          // TODO: there is probably a cleaner way to do this...
           while (src_offset % m_uncC->get_tile_align_size() != 0) {
             src_offset += 1;
           }
