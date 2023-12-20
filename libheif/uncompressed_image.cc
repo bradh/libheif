@@ -465,10 +465,50 @@ protected:
   }
 };
 
+
 class ComponentInterleaveDecoder : public AbstractDecoder
 {
 public:
   ComponentInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
+    AbstractDecoder(width, height, std::move(cmpd), std::move(uncC))
+  {}
+
+  Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
+    const uint8_t* src = uncompressed_data.data();
+    uint64_t src_offset = 0;
+    buildChannelList(img);
+    for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
+      for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
+        for (ChannelListEntry &entry : channelList) {
+          if (entry.use_channel) {
+            uint64_t dst_column_offset = tile_column * entry.bytes_per_tile_row_dest;
+            for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
+              uint64_t dst_row_number = tile_row * tile_height + tile_y;
+              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
+              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
+              src_offset += entry.bytes_per_tile_row_src;
+            }
+          } else {
+            // skip over the data we are not using
+            src_offset += (entry.bytes_per_tile_row_src * tile_height);
+          }
+        }
+        if (m_uncC->get_tile_align_size() != 0) {
+          while (src_offset % m_uncC->get_tile_align_size() != 0) {
+            src_offset += 1;
+          }
+        }
+      }
+    }
+    return Error::Ok;
+  }
+};
+
+
+class ComponentInterleaveSubsamplingDecoder : public AbstractDecoder
+{
+public:
+  ComponentInterleaveSubsamplingDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
     AbstractDecoder(width, height, std::move(cmpd), std::move(uncC))
   {}
 
@@ -531,6 +571,7 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+    buildChannelList(img);
     // TODO: needs to handle multiple bytes per sample
     uint32_t bytes_per_tile_row = tile_width;
     if (m_uncC->get_row_align_size() > 0) {
@@ -755,7 +796,11 @@ public:
 static AbstractDecoder* makeDecoder(uint32_t width, uint32_t height, const std::shared_ptr<Box_cmpd>& cmpd, const std::shared_ptr<Box_uncC>& uncC)
 {
   if (uncC->get_interleave_type() == interleave_mode_component) {
-    return new ComponentInterleaveDecoder(width, height, cmpd, uncC);
+    if (uncC->get_sampling_type() == sampling_mode_no_subsampling) {
+      return new ComponentInterleaveDecoder(width, height, cmpd, uncC);
+    } else {
+      return new ComponentInterleaveSubsamplingDecoder(width, height, cmpd, uncC);
+    }
   } else if (uncC->get_interleave_type() == interleave_mode_pixel) {
     return new PixelInterleaveDecoder(width, height, cmpd, uncC);
   } else if (uncC->get_interleave_type() == interleave_mode_mixed) {
