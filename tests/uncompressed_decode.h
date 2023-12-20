@@ -31,6 +31,7 @@
   "uncompressed_comp_RGxB.heif", "uncompressed_comp_RGxB_tiled.heif", \
   "uncompressed_pix_ABGR.heif", "uncompressed_pix_ABGR_tiled.heif", \
   "uncompressed_pix_RGB.heif", "uncompressed_pix_RGB_tiled.heif", \
+  "uncompressed_pix_RGB_tiled_row_tile_align.heif", \
   "uncompressed_pix_RGxB.heif", "uncompressed_pix_RGxB_tiled.heif", \
   "uncompressed_row_ABGR.heif", "uncompressed_row_ABGR_tiled.heif", \
   "uncompressed_row_RGB.heif", "uncompressed_row_RGB_tiled.heif", \
@@ -73,7 +74,7 @@
   YUV_422_FILES, YUV_420_FILES, YUV_FILES
 
 #if 0
-"uncompressed_pix_RGB_tiled_row_tile_align.heif", \
+ \
 "uncompressed_comp_p.heif", \
 "uncompressed_comp_p_tiled.heif", \
 "uncompressed_pix_p.heif", \

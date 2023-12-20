@@ -63,7 +63,7 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                    heif_suberror_Unsupported_data_version,
                    sstr.str());
     }
-    if (component.component_align_size >= 2) {
+    if (component.component_align_size > 2) {
       printf("unsupported component_align_size\n");
       std::stringstream sstr;
       sstr << "Uncompressed image with component_align_size " << ((int) component.component_align_size) << " is not implemented yet";
@@ -216,13 +216,6 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
     printf("unsupported pixel size\n");
     std::stringstream sstr;
     sstr << "Uncompressed pixel_size of " << ((int) uncC->get_pixel_size()) << " is not implemented yet";
-    return Error(heif_error_Unsupported_feature,
-                 heif_suberror_Unsupported_data_version,
-                 sstr.str());
-  }
-  if ((uncC->get_row_align_size() != 0) && (uncC->get_interleave_type() == interleave_mode_pixel)) {
-    std::stringstream sstr;
-    sstr << "Uncompressed row_align_size of " << ((int) uncC->get_row_align_size()) << " is not implemented yet for pixel interleave";
     return Error(heif_error_Unsupported_feature,
                  heif_suberror_Unsupported_data_version,
                  sstr.str());
@@ -533,6 +526,7 @@ public:
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
           uint64_t dst_row_number = tile_row * m_tile_height + tile_y;
+          uint32_t bytes_in_row = 0;
           for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
             uint64_t dst_col_number = tile_column * m_tile_width + tile_x;
             for (ChannelListEntry &entry : channelList) {
@@ -542,7 +536,13 @@ public:
                 memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_component_sample);
               }
               src_offset += entry.bytes_per_component_sample;
+              bytes_in_row += entry.bytes_per_component_sample;
             }
+          }
+          if (m_uncC->get_row_align_size() != 0) {
+            uint32_t residual = bytes_in_row % m_uncC->get_row_align_size();
+            uint32_t row_padding = m_uncC->get_row_align_size() - residual;
+            src_offset += row_padding;
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
