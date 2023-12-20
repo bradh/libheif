@@ -747,41 +747,24 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
-    // TODO: needs to handle multiple bytes per sample
-    uint32_t bytes_per_tile_row = tile_width;
-    if (m_uncC->get_row_align_size() > 0) {
-      while (bytes_per_tile_row % m_uncC->get_row_align_size() != 0) {
-        bytes_per_tile_row += 1;
-      }
-    }
-    for (Box_uncC::Component component : m_uncC->get_components()) {
-      heif_channel channel;
-      if (!map_uncompressed_component_to_channel(m_cmpd, component, &channel)) {
-        // TODO: should include multiple bytes per component sample (assumes 1 right now)
-        uint64_t bytes_per_component = bytes_per_tile_row * tile_height * m_uncC->get_number_of_tile_columns() * m_uncC->get_number_of_tile_rows();
-        // skip over the component we are not handling.
+    buildChannelList(img);
+    for (ChannelListEntry &entry : channelList) {
+      if (!entry.use_channel) {
+        uint64_t bytes_per_component = entry.bytes_per_tile_row_src * tile_height * m_uncC->get_number_of_tile_columns() * m_uncC->get_number_of_tile_rows();
         src_offset += bytes_per_component;
         continue;
       }
-      uint32_t bytes_per_component_sample = 1;
-      if (component.component_bit_depth > 8) {
-        // HACK
-        bytes_per_component_sample = 2;
-        bytes_per_tile_row = bytes_per_component_sample * tile_width;
-      }
-      int stride;
-      uint8_t* dst_plane = img->get_plane(channel, &stride);
       for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
         for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
-          // TODO: I think we need to handle source width and destination width separately
-          uint64_t dst_column_offset = tile_column * tile_width * bytes_per_component_sample;
+          uint64_t dst_column_offset = tile_column * entry.bytes_per_tile_row_dest;
           for (uint32_t tile_y = 0; tile_y < tile_height; tile_y++) {
             uint64_t dst_row_number = tile_row * tile_height + tile_y;
-            uint64_t dst_row_offset = dst_row_number * stride;
-            memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row);
-            src_offset += bytes_per_tile_row;
+            uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;  
+            memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
+            src_offset += entry.bytes_per_tile_row_src;
           }
           if (m_uncC->get_tile_align_size() != 0) {
+            // TODO: there is probably a cleaner way to do this...
             while (src_offset % m_uncC->get_tile_align_size() != 0) {
               src_offset += 1;
             }
