@@ -434,7 +434,9 @@ protected:
   {
     heif_channel channel;
     uint8_t* dst_plane;
+    uint8_t* other_chroma_dst_plane;
     int dst_plane_stride;
+    int other_chroma_dst_plane_stride;
     uint32_t tile_width;
     uint32_t tile_height;
     uint32_t bytes_per_component_sample;
@@ -447,27 +449,38 @@ protected:
 
   void buildChannelList(std::shared_ptr<HeifPixelImage>& img) {     
     for (Box_uncC::Component component : m_uncC->get_components()) {
-      ChannelListEntry entry;
-      entry.use_channel = map_uncompressed_component_to_channel(m_cmpd, component, &(entry.channel));
-      entry.dst_plane = img->get_plane(entry.channel, &(entry.dst_plane_stride));
-      entry.tile_width = m_tile_width;
-      entry.tile_height = m_tile_height;
-      if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
-        if (m_uncC->get_sampling_type() == sampling_mode_422) {
-          entry.tile_width /= 2;
-        } else if (m_uncC->get_sampling_type() == sampling_mode_420) {
-          entry.tile_width /= 2;
-          entry.tile_height /= 2;
-        }
-      }
-      entry.bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
-      entry.bytes_per_tile_row_src = entry.tile_width * entry.bytes_per_component_sample;
-      if (m_uncC->get_row_align_size() > 0) {
-        entry.bytes_per_tile_row_src = roundUpTo(entry.bytes_per_tile_row_src, m_uncC->get_row_align_size());
-      }
-      entry.bytes_per_tile_row_dest = entry.tile_width * entry.bytes_per_component_sample;
+      ChannelListEntry entry = buildChannelListEntry(component, img);
       channelList.push_back(entry);
     }
+  }
+
+private:
+  ChannelListEntry buildChannelListEntry(Box_uncC::Component component, std::shared_ptr<HeifPixelImage> &img) {
+    ChannelListEntry entry;
+    entry.use_channel = map_uncompressed_component_to_channel(m_cmpd, component, &(entry.channel));
+    entry.dst_plane = img->get_plane(entry.channel, &(entry.dst_plane_stride));
+    entry.tile_width = m_tile_width;
+    entry.tile_height = m_tile_height;
+    if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
+      if (m_uncC->get_sampling_type() == sampling_mode_422) {
+        entry.tile_width /= 2;
+      } else if (m_uncC->get_sampling_type() == sampling_mode_420) {
+        entry.tile_width /= 2;
+        entry.tile_height /= 2;
+      }
+      if (entry.channel == heif_channel_Cb) {
+        entry.other_chroma_dst_plane = img->get_plane(heif_channel_Cr, &(entry.other_chroma_dst_plane_stride));
+      } else if (entry.channel == heif_channel_Cr) {
+        entry.other_chroma_dst_plane = img->get_plane(heif_channel_Cb, &(entry.other_chroma_dst_plane_stride));
+      }
+    }
+    entry.bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
+    entry.bytes_per_tile_row_src = entry.tile_width * entry.bytes_per_component_sample;
+    if (m_uncC->get_row_align_size() > 0) {
+      entry.bytes_per_tile_row_src = roundUpTo(entry.bytes_per_tile_row_src, m_uncC->get_row_align_size());
+    }
+    entry.bytes_per_tile_row_dest = entry.tile_width * entry.bytes_per_component_sample;
+    return entry;
   }
 };
 
@@ -568,13 +581,9 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+
     buildChannelList(img);
 
-    int cb_stride;
-    uint8_t* cb_dst_plane = img->get_plane(heif_channel_Cb, &cb_stride);
-    int cr_stride;
-    uint8_t* cr_dst_plane = img->get_plane(heif_channel_Cr, &cr_stride);
-    
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         bool haveProcessedChromaForThisTile = false;
@@ -584,35 +593,17 @@ public:
             src_offset += (entry.bytes_per_tile_row_src * m_tile_height);
             continue;
           }
-          if (entry.channel == heif_channel_Cb) {
+          if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
             if (!haveProcessedChromaForThisTile) {
               for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
                 uint64_t dst_row_number = tile_row * entry.tile_width + tile_y;
                 uint64_t dst_row_offset = dst_row_number * 64;
                 for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
                   uint64_t dst_column_number = tile_column * entry.tile_width + tile_x;
-                  uint64_t dst_column_offset = dst_column_number; // TODO: bytes per sample
-                  // cb_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
+                  uint64_t dst_column_offset = dst_column_number * entry.bytes_per_component_sample;
                   memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
                   src_offset += entry.bytes_per_component_sample;
-                  cr_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-                  src_offset += entry.bytes_per_component_sample;
-                }
-                haveProcessedChromaForThisTile = true;
-              }
-            }
-          } else if (entry.channel == heif_channel_Cr) {
-            if (!haveProcessedChromaForThisTile) {
-              for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
-                uint64_t dst_row_number = tile_row * entry.tile_width + tile_y;
-                uint64_t dst_row_offset = dst_row_number * 64;
-                for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
-                  uint64_t dst_column_number = tile_column * entry.tile_width + tile_x;
-                  uint64_t dst_column_offset = dst_column_number; // TODO: bytes per sample
-                  // cr_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-                  memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
-                  src_offset += entry.bytes_per_component_sample;
-                  cb_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
+                  memcpy(entry.other_chroma_dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
                   src_offset += entry.bytes_per_component_sample;
                 }
                 haveProcessedChromaForThisTile = true;
