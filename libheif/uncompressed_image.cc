@@ -570,14 +570,13 @@ public:
   }
 };
 
-class MixedInterleave422Decoder : public AbstractDecoder
+class MixedInterleaveDecoder : public AbstractDecoder
 {
 public:
-  MixedInterleave422Decoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
+  MixedInterleaveDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
     AbstractDecoder(width, height, std::move(cmpd), std::move(uncC))
   {}
 
-  // TODO: this needs rework
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
@@ -616,96 +615,6 @@ public:
               uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
               memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
               src_offset += entry.bytes_per_tile_row_src;
-            }
-          }
-        }
-        if (m_uncC->get_tile_align_size() != 0) {
-          while (src_offset % m_uncC->get_tile_align_size() != 0) {
-            src_offset += 1;
-          }
-        }
-      }
-    }
-    return Error::Ok;
-  }
-};
-
-class MixedInterleave420Decoder : public AbstractDecoder
-{
-public:
-  MixedInterleave420Decoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
-    AbstractDecoder(width, height, std::move(cmpd), std::move(uncC))
-  {}
-
-  // TODO: this needs rework
-  Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-    const uint8_t* src = uncompressed_data.data();
-    uint64_t src_offset = 0;
-    // TODO: needs to handle multiple bytes per sample
-    uint32_t bytes_per_tile_row = m_tile_width;
-    if (m_uncC->get_row_align_size() > 0) {
-      bytes_per_tile_row = roundUpTo(bytes_per_tile_row, m_uncC->get_row_align_size());
-    }
-    int cb_stride;
-    uint8_t* cb_dst_plane = img->get_plane(heif_channel_Cb, &cb_stride);
-    int cr_stride;
-    uint8_t* cr_dst_plane = img->get_plane(heif_channel_Cr, &cr_stride);
-    for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
-      for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
-        bool haveProcessedChromaForThisTile = false;
-        for (Box_uncC::Component component : m_uncC->get_components()) {
-          heif_channel channel;
-          if (!map_uncompressed_component_to_channel(m_cmpd, component, &channel)) {
-            // skip over the data we are not using
-            src_offset += (bytes_per_tile_row * m_tile_height);
-            continue;
-          }
-          uint32_t comp_tile_height = m_tile_height;
-          if ((m_uncC->get_sampling_type() == sampling_mode_420) && ((channel == heif_channel_Cb) || (channel == heif_channel_Cr))) {
-            comp_tile_height = m_tile_height / 2;
-          }
-          m_tile_width = img->get_width(channel) / m_uncC->get_number_of_tile_columns();
-          if (channel == heif_channel_Cb) {
-            if (!haveProcessedChromaForThisTile) {
-              for (uint32_t tile_y = 0; tile_y < comp_tile_height; tile_y++) {
-                uint64_t dst_row_number = tile_row * comp_tile_height + tile_y;
-                uint64_t dst_row_offset = dst_row_number * 64;
-                for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
-                  uint64_t dst_column_number = tile_column * m_tile_width + tile_x;
-                  uint64_t dst_column_offset = dst_column_number; // TODO: bytes per sample
-                  cb_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-                  src_offset += 1; // TODO: bytes per sample
-                  cr_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-                  src_offset += 1; // TODO: bytes per sample
-                }
-                haveProcessedChromaForThisTile = true;
-              }
-            }
-          } else if (channel == heif_channel_Cr) {
-            if (!haveProcessedChromaForThisTile) {
-              for (uint32_t tile_y = 0; tile_y < comp_tile_height; tile_y++) {
-                uint64_t dst_row_number = tile_row * comp_tile_height + tile_y;
-                uint64_t dst_row_offset = dst_row_number * 64;
-                for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
-                  uint64_t dst_column_number = tile_column * m_tile_width + tile_x;
-                  uint64_t dst_column_offset = dst_column_number; // TODO: bytes per sample
-                  cr_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-                  src_offset += 1; // TODO: bytes per sample
-                  cb_dst_plane[dst_row_offset + dst_column_offset] = src[src_offset];
-                  src_offset += 1; // TODO: bytes per sample
-                }
-                haveProcessedChromaForThisTile = true;
-              }
-            }
-          } else {
-            int stride;
-            uint8_t* dst_plane = img->get_plane(channel, &stride);
-            for (uint32_t tile_y = 0; tile_y < comp_tile_height; tile_y++) {
-              uint64_t dst_row_number = tile_row * comp_tile_height + tile_y;
-              uint64_t dst_row_offset = dst_row_number * stride;
-              uint64_t dst_column_offset = tile_column * m_tile_width;
-              memcpy(dst_plane + dst_row_offset + dst_column_offset, src + src_offset, bytes_per_tile_row);
-              src_offset += bytes_per_tile_row;
             }
           }
         }
@@ -803,14 +712,7 @@ static AbstractDecoder* makeDecoder(uint32_t width, uint32_t height, const std::
   } else if (uncC->get_interleave_type() == interleave_mode_pixel) {
     return new PixelInterleaveDecoder(width, height, cmpd, uncC);
   } else if (uncC->get_interleave_type() == interleave_mode_mixed) {
-    if (uncC->get_sampling_type() == sampling_mode_420) {
-      return new MixedInterleave420Decoder(width, height, cmpd, uncC);
-    } else if (uncC->get_sampling_type() == sampling_mode_422) {
-      return new MixedInterleave422Decoder(width, height, cmpd, uncC);
-    } else {
-      // We should never get here - checked earlier
-      return nullptr;
-    }
+    return new MixedInterleaveDecoder(width, height, cmpd, uncC);
   } else if (uncC->get_interleave_type() == interleave_mode_row) {
     return new RowInterleaveDecoder(width, height, cmpd, uncC);
   } else if (uncC->get_interleave_type() == interleave_mode_tile_component) {
