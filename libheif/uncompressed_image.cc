@@ -495,7 +495,9 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+
     buildChannelList(img);
+
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         for (ChannelListEntry &entry : channelList) {
@@ -520,6 +522,7 @@ public:
         }
       }
     }
+
     return Error::Ok;
   }
 };
@@ -534,7 +537,9 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+
     buildChannelList(img);
+
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
@@ -566,6 +571,7 @@ public:
         }
       }
     }
+
     return Error::Ok;
   }
 };
@@ -625,6 +631,7 @@ public:
         }
       }
     }
+
     return Error::Ok;
   }
 };
@@ -639,7 +646,9 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+
     buildChannelList(img);
+
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
@@ -661,6 +670,7 @@ public:
         }
       }
     }
+
     return Error::Ok;
   }
 };
@@ -676,7 +686,9 @@ public:
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     const uint8_t* src = uncompressed_data.data();
     uint64_t src_offset = 0;
+
     buildChannelList(img);
+
     for (ChannelListEntry &entry : channelList) {
       if (!entry.use_channel) {
         uint64_t bytes_per_component = entry.bytes_per_tile_row_src * entry.tile_height * m_uncC->get_number_of_tile_columns() * m_uncC->get_number_of_tile_rows();
@@ -701,6 +713,7 @@ public:
         }
       }
     }
+
     return Error::Ok;
   }
 };
