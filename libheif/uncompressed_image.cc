@@ -484,6 +484,32 @@ private:
   }
 };
 
+class UncompressedBitReader : public BitReader
+{
+  public:
+    UncompressedBitReader(const std::vector<uint8_t>& data) : BitReader(data.data(), (int)data.size())
+    {}
+
+    void markTileStart()
+    {
+      m_tileStartOffset = get_current_byte_index();
+    }
+
+    void handleTileAlignment(uint32_t alignment)
+    {
+      if (alignment != 0) {
+        uint32_t bytes_in_tile = get_current_byte_index() - m_tileStartOffset;
+        uint32_t residual = bytes_in_tile % alignment;
+        if (residual != 0) {
+          uint32_t tile_padding = alignment - residual;
+          skip_bytes(tile_padding);
+        }
+      }
+    }
+
+  private:
+    int m_tileStartOffset;
+};
 
 class ComponentInterleaveDecoder : public AbstractDecoder
 {
@@ -493,12 +519,13 @@ public:
   {}
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-    BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
+    UncompressedBitReader srcBits(uncompressed_data);
 
     buildChannelList(img);
 
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
+        srcBits.markTileStart();
         for (ChannelListEntry &entry : channelList) {
           if (!entry.use_channel) {
             // skip over the data we are not using
@@ -518,12 +545,7 @@ public:
             srcBits.skip_bytes(entry.bytes_per_tile_row_src - entry.bytes_per_tile_row_dest);
           }
         }
-        if (m_uncC->get_tile_align_size() != 0) {
-          // TODO: there is probably a cleaner way to do this...
-          while (srcBits.get_current_byte_index() % m_uncC->get_tile_align_size() != 0) {
-            srcBits.skip_bytes(1);
-          }
-        }
+        srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
     }
 
@@ -539,12 +561,13 @@ public:
   {}
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-    BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
+    UncompressedBitReader srcBits(uncompressed_data);
 
     buildChannelList(img);
 
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
+        srcBits.markTileStart();
         for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
           uint64_t dst_row_number = tile_row * m_tile_height + tile_y;
           uint32_t bytes_in_row = 0;
@@ -568,12 +591,7 @@ public:
             srcBits.skip_bytes(row_padding);
           }
         }
-        if (m_uncC->get_tile_align_size() != 0) {
-          // TODO: there is probably a cleaner way to do this...
-          while (srcBits.get_current_byte_index() % m_uncC->get_tile_align_size() != 0) {
-            srcBits.skip_bytes(1);
-          }
-        }
+        srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
     }
 
