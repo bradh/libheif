@@ -539,8 +539,7 @@ public:
   {}
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-    const uint8_t* src = uncompressed_data.data();
-    uint64_t src_offset = 0;
+    BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
 
     buildChannelList(img);
 
@@ -555,22 +554,24 @@ public:
               if (entry.use_channel) {
                 uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
                 uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
-                memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_component_sample);
+                int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+                memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
+              } else {
+                srcBits.skip_bytes(entry.bytes_per_component_sample);
               }
-              src_offset += entry.bytes_per_component_sample;
               bytes_in_row += entry.bytes_per_component_sample;
             }
           }
           if (m_uncC->get_row_align_size() != 0) {
             uint32_t residual = bytes_in_row % m_uncC->get_row_align_size();
             uint32_t row_padding = m_uncC->get_row_align_size() - residual;
-            src_offset += row_padding;
+            srcBits.skip_bytes(row_padding);
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
           // TODO: there is probably a cleaner way to do this...
-          while (src_offset % m_uncC->get_tile_align_size() != 0) {
-            src_offset += 1;
+          while (srcBits.get_current_byte_index() % m_uncC->get_tile_align_size() != 0) {
+            srcBits.skip_bytes(1);
           }
         }
       }
@@ -588,7 +589,7 @@ public:
   {}
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
+    BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
 
     buildChannelList(img);
 
