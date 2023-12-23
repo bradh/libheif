@@ -71,7 +71,7 @@ void check_image_handle_size_subsampled(struct heif_context *&context) {
 
 
 TEST_CASE("check image handle size subsampled") {
-  auto file = GENERATE(YUV_422_FILES, YUV_420_FILES);
+  auto file = GENERATE(YUV_422_FILES, YUV_420_FILES, YUV_16BIT_422_FILES, YUV_16BIT_420_FILES);
   auto context = get_context_for_test_file(file);
   INFO("file name: " << file);
   check_image_handle_size_subsampled(context);

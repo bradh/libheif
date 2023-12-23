@@ -87,6 +87,60 @@ TEST_CASE("check image size YCbCr 4:2:2") {
   heif_context_free(context);
 }
 
+void check_image_size_ycbcr_422_16bit(struct heif_context *&context) {
+  heif_image_handle *handle = get_primary_image_handle(context);
+  heif_image *img = get_primary_image_ycbcr(handle, heif_chroma_422);
+
+  REQUIRE(heif_image_has_channel(img, heif_channel_Y) == 1);
+  REQUIRE(heif_image_has_channel(img, heif_channel_Cb) == 1);
+  REQUIRE(heif_image_has_channel(img, heif_channel_Cr) == 1);
+  REQUIRE(heif_image_has_channel(img, heif_channel_R) == 0);
+  REQUIRE(heif_image_has_channel(img, heif_channel_G) == 0);
+  REQUIRE(heif_image_has_channel(img, heif_channel_B) == 0);
+  REQUIRE(heif_image_has_channel(img, heif_channel_Alpha) == 0);
+  REQUIRE(heif_image_has_channel(img, heif_channel_interleaved) == 0);
+  int width = heif_image_get_primary_width(img);
+  REQUIRE(width == 32);
+  int height = heif_image_get_primary_height(img);
+  REQUIRE(height == 20);
+  width = heif_image_get_width(img, heif_channel_Y);
+  REQUIRE(width == 32);
+  height = heif_image_get_height(img, heif_channel_Y);
+  REQUIRE(height == 20);
+  width = heif_image_get_width(img, heif_channel_Cb);
+  REQUIRE(width == 16);
+  height = heif_image_get_height(img, heif_channel_Cr);
+  REQUIRE(height == 20);
+  width = heif_image_get_width(img, heif_channel_Cr);
+  REQUIRE(width == 16);
+  height = heif_image_get_height(img, heif_channel_Cr);
+  REQUIRE(height == 20);
+
+  int pixel_depth = heif_image_get_bits_per_pixel(img, heif_channel_Y);
+  REQUIRE(pixel_depth == 16);
+  pixel_depth = heif_image_get_bits_per_pixel(img, heif_channel_Cb);
+  REQUIRE(pixel_depth == 16);
+  pixel_depth = heif_image_get_bits_per_pixel(img, heif_channel_Cr);
+  REQUIRE(pixel_depth == 16);
+  int pixel_range = heif_image_get_bits_per_pixel_range(img, heif_channel_Y);
+  REQUIRE(pixel_range == 16);
+  pixel_range = heif_image_get_bits_per_pixel_range(img, heif_channel_Cb);
+  REQUIRE(pixel_range == 16);
+  pixel_range = heif_image_get_bits_per_pixel_range(img, heif_channel_Cr);
+  REQUIRE(pixel_range == 16);
+
+  heif_image_release(img);
+  heif_image_handle_release(handle);
+}
+
+TEST_CASE("check image size YCbCr 4:2:2 16 bit") {
+  auto file = GENERATE(YUV_16BIT_422_FILES);
+  auto context = get_context_for_test_file(file);
+  INFO("file name: " << file);
+  check_image_size_ycbcr_422_16bit(context);
+  heif_context_free(context);
+}
+
 void check_image_content_ycbcr422(struct heif_context *&context) {
   heif_image_handle *handle = get_primary_image_handle(context);
   heif_image *img = get_primary_image_ycbcr(handle, heif_chroma_422);
@@ -396,3 +450,5 @@ TEST_CASE("check image content YCbCr 4:2:2") {
   check_image_content_ycbcr422(context);
   heif_context_free(context);
 }
+
+// TODO: check image content for YUV_16BIT_422_FILES

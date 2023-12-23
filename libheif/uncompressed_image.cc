@@ -362,7 +362,7 @@ static unsigned int get_bytes_per_pixel(const std::shared_ptr<Box_uncC>& uncC)
 
 #endif
 
-static bool map_uncompressed_component_to_channel(std::shared_ptr<Box_cmpd> &cmpd, Box_uncC::Component component, heif_channel *channel) {
+static bool map_uncompressed_component_to_channel(const std::shared_ptr<Box_cmpd> &cmpd, const Box_uncC::Component component, heif_channel *channel) {
   uint16_t component_index = component.component_index;
   uint16_t component_type = cmpd->get_components()[component_index].component_type;
   switch (component_type) {
@@ -412,7 +412,7 @@ public:
   virtual Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) = 0;
   virtual ~AbstractDecoder() = default;
 protected:
-  AbstractDecoder(uint32_t width, uint32_t height, std::shared_ptr<Box_cmpd> cmpd, std::shared_ptr<Box_uncC> uncC):
+  AbstractDecoder(uint32_t width, uint32_t height, const std::shared_ptr<Box_cmpd> cmpd, const std::shared_ptr<Box_uncC> uncC):
     m_width(width),
     m_height(height),
     m_cmpd(std::move(cmpd)),
@@ -424,8 +424,8 @@ protected:
 
   const uint32_t m_width;
   const uint32_t m_height;
-  std::shared_ptr<Box_cmpd> m_cmpd;
-  std::shared_ptr<Box_uncC> m_uncC;
+  const std::shared_ptr<Box_cmpd> m_cmpd;
+  const std::shared_ptr<Box_uncC> m_uncC;
   // TODO: see if we can make this const
   uint32_t m_tile_height;
   uint32_t m_tile_width;
@@ -493,8 +493,7 @@ public:
   {}
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-    const uint8_t* src = uncompressed_data.data();
-    uint64_t src_offset = 0;
+    BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
 
     buildChannelList(img);
 
@@ -503,21 +502,24 @@ public:
         for (ChannelListEntry &entry : channelList) {
           if (!entry.use_channel) {
             // skip over the data we are not using
-            src_offset += (entry.bytes_per_tile_row_src * m_tile_height);
+            srcBits.skip_bytes(entry.bytes_per_tile_row_src * m_tile_height);
             continue;
           }
-          uint64_t dst_column_offset = tile_column * entry.bytes_per_tile_row_dest;
           for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
             uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
             uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-            memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
-            src_offset += entry.bytes_per_tile_row_src;
+            for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
+              uint64_t dst_col_number = tile_column * entry.tile_width + tile_x;  
+              uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
+              int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_tile_row_dest);
+            }
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
           // TODO: there is probably a cleaner way to do this...
-          while (src_offset % m_uncC->get_tile_align_size() != 0) {
-            src_offset += 1;
+          while (srcBits.get_current_byte_index() % m_uncC->get_tile_align_size() != 0) {
+            srcBits.skip_bytes(1);
           }
         }
       }

@@ -60,9 +60,15 @@
   "uncompressed_comp_VUY_422.heif", "uncompressed_comp_YUV_422.heif", "uncompressed_comp_YVU_422.heif", \
   "uncompressed_mix_VUY_422.heif", "uncompressed_mix_YUV_422.heif", "uncompressed_mix_YVU_422.heif"
 
+#define YUV_16BIT_422_FILES \
+  "uncompressed_comp_Y16U16V16_422.heif", "uncompressed_mix_Y16U16V16_422.heif"
+
 #define YUV_420_FILES \
   "uncompressed_comp_VUY_420.heif", "uncompressed_comp_YUV_420.heif", "uncompressed_comp_YVU_420.heif", \
   "uncompressed_mix_VUY_420.heif", "uncompressed_mix_YUV_420.heif", "uncompressed_mix_YVU_420.heif"
+
+#define YUV_16BIT_420_FILES \
+  "uncompressed_comp_Y16U16V16_420.heif", "uncompressed_mix_Y16U16V16_420.heif"
 
 #define YUV_FILES \
   "uncompressed_comp_YUV_tiled.heif", \
@@ -71,7 +77,7 @@
   "uncompressed_tile_YUV_tiled.heif"
 
 #define ALL_YUV_FILES \
-  YUV_422_FILES, YUV_420_FILES, YUV_FILES
+  YUV_422_FILES, YUV_420_FILES, YUV_16BIT_422_FILES, YUV_16BIT_420_FILES, YUV_FILES
 
 #if 0
  \
