@@ -512,8 +512,10 @@ public:
               uint64_t dst_col_number = tile_column * entry.tile_width + tile_x;  
               uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
               int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
-              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_tile_row_dest);
+              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
             }
+            // There is a better way to do this...
+            srcBits.skip_bytes(entry.bytes_per_tile_row_src - entry.bytes_per_tile_row_dest);
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
@@ -586,8 +588,7 @@ public:
   {}
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
-    const uint8_t* src = uncompressed_data.data();
-    uint64_t src_offset = 0;
+BitReader srcBits(uncompressed_data.data(), (int)uncompressed_data.size());
 
     buildChannelList(img);
 
@@ -597,38 +598,42 @@ public:
         for (ChannelListEntry &entry : channelList) {
           if (!entry.use_channel) {
             // skip over the data we are not using
-            src_offset += (entry.bytes_per_tile_row_src * m_tile_height);
+            srcBits.skip_bytes(entry.bytes_per_tile_row_src * m_tile_height);
             continue;
           }
           if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
             if (!haveProcessedChromaForThisTile) {
               for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
                 uint64_t dst_row_number = tile_row * entry.tile_width + tile_y;
-                uint64_t dst_row_offset = dst_row_number * 64;
+                uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
                 for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
                   uint64_t dst_column_number = tile_column * entry.tile_width + tile_x;
                   uint64_t dst_column_offset = dst_column_number * entry.bytes_per_component_sample;
-                  memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
-                  src_offset += entry.bytes_per_component_sample;
-                  memcpy(entry.other_chroma_dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
-                  src_offset += entry.bytes_per_component_sample;
+                  int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+                  memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
+                  val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+                  memcpy(entry.other_chroma_dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
                 }
                 haveProcessedChromaForThisTile = true;
               }
             }
           } else {
-            uint64_t dst_column_offset = tile_column * entry.bytes_per_tile_row_dest;
             for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
               uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
               uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-              memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, src + src_offset, entry.bytes_per_tile_row_dest);
-              src_offset += entry.bytes_per_tile_row_src;
+              for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
+                uint64_t dst_col_number = tile_column * entry.tile_width + tile_x;  
+                uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
+                int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+                memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_tile_row_dest);
+              }
             }
           }
         }
         if (m_uncC->get_tile_align_size() != 0) {
-          while (src_offset % m_uncC->get_tile_align_size() != 0) {
-            src_offset += 1;
+          // TODO: there is probably a cleaner way to do this...
+          while (srcBits.get_current_byte_index() % m_uncC->get_tile_align_size() != 0) {
+            srcBits.skip_bytes(1);
           }
         }
       }
