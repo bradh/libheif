@@ -490,9 +490,26 @@ class UncompressedBitReader : public BitReader
     UncompressedBitReader(const std::vector<uint8_t>& data) : BitReader(data.data(), (int)data.size())
     {}
 
+    void markRowStart()
+    {
+      m_rowStartOffset = get_current_byte_index();
+    }
+
     void markTileStart()
     {
       m_tileStartOffset = get_current_byte_index();
+    }
+
+    void handleRowAlignment(uint32_t alignment)
+    {
+      if (alignment != 0) {
+        uint32_t bytes_in_row = get_current_byte_index() - m_tileStartOffset;
+        uint32_t residual = bytes_in_row % alignment;
+        if (residual != 0) {
+          uint32_t padding = alignment - residual;
+          skip_bytes(padding);
+        }
+      }
     }
 
     void handleTileAlignment(uint32_t alignment)
@@ -508,6 +525,7 @@ class UncompressedBitReader : public BitReader
     }
 
   private:
+    int m_rowStartOffset;
     int m_tileStartOffset;
 };
 
@@ -533,6 +551,7 @@ public:
             continue;
           }
           for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+            srcBits.markRowStart();
             uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
             uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
             for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
@@ -541,8 +560,7 @@ public:
               int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
               memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
             }
-            // There is a better way to do this...
-            srcBits.skip_bytes(entry.bytes_per_tile_row_src - entry.bytes_per_tile_row_dest);
+            srcBits.handleRowAlignment(m_uncC->get_row_align_size());
           }
         }
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
@@ -569,8 +587,8 @@ public:
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         srcBits.markTileStart();
         for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
+          srcBits.markRowStart();
           uint64_t dst_row_number = tile_row * m_tile_height + tile_y;
-          uint32_t bytes_in_row = 0;
           for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
             uint64_t dst_col_number = tile_column * m_tile_width + tile_x;
             for (ChannelListEntry &entry : channelList) {
@@ -582,14 +600,9 @@ public:
               } else {
                 srcBits.skip_bytes(entry.bytes_per_component_sample);
               }
-              bytes_in_row += entry.bytes_per_component_sample;
             }
           }
-          if (m_uncC->get_row_align_size() != 0) {
-            uint32_t residual = bytes_in_row % m_uncC->get_row_align_size();
-            uint32_t row_padding = m_uncC->get_row_align_size() - residual;
-            srcBits.skip_bytes(row_padding);
-          }
+          srcBits.handleRowAlignment(m_uncC->get_row_align_size());
         }
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
@@ -624,6 +637,7 @@ public:
           if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
             if (!haveProcessedChromaForThisTile) {
               for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+                // TODO: row padding
                 uint64_t dst_row_number = tile_row * entry.tile_width + tile_y;
                 uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
                 for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
@@ -676,6 +690,7 @@ public:
         for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
           uint64_t dst_row_number = tile_row * m_tile_height + tile_y;
           for (ChannelListEntry &entry : channelList) {
+            srcBits.markRowStart();
             if (entry.use_channel) {
               uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
               for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
@@ -684,11 +699,10 @@ public:
                 int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
                 memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
               }
-              // There is a better way to do this...
-              srcBits.skip_bytes(entry.bytes_per_tile_row_src - entry.bytes_per_tile_row_dest);
             } else {
               srcBits.skip_bytes(entry.bytes_per_tile_row_src);
             }
+            srcBits.handleRowAlignment(m_uncC->get_row_align_size());
           }
         }
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
@@ -722,6 +736,7 @@ public:
         for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
           srcBits.markTileStart();
           for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+            srcBits.markRowStart();
             uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
             uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;  
             for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
@@ -730,8 +745,7 @@ public:
               int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
               memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
             }
-            // There is a better way to do this...
-            srcBits.skip_bytes(entry.bytes_per_tile_row_src - entry.bytes_per_tile_row_dest);
+            srcBits.handleRowAlignment(m_uncC->get_row_align_size());
           }
           srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
         }
