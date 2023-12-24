@@ -40,7 +40,12 @@
   "uncompressed_tile_ABGR_tiled.heif", \
   "uncompressed_tile_RGB_tiled.heif", \
   "uncompressed_tile_RGB_tiled_row_tile_align.heif", \
-  "uncompressed_tile_RGxB_tiled.heif"
+  "uncompressed_tile_RGxB_tiled.heif", \
+  "uncompressed_pix_R8G8B8A8_bsz0_psz10_tiled.heif", \
+  "uncompressed_pix_R8G8B8A8_bsz0_psz5_tiled.heif", \
+  "uncompressed_pix_R8G8B8_bsz0_psz10_tiled.heif", \
+  "uncompressed_pix_R8G8B8_bsz0_psz5_tiled.heif"
+
 
 #define FILES_16BIT_RGB \
   "uncompressed_comp_B16R16G16.heif", "uncompressed_comp_B16R16G16_tiled.heif", \

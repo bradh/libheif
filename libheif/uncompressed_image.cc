@@ -212,12 +212,11 @@ static Error uncompressed_image_type_is_supported(std::shared_ptr<Box_uncC>& unc
                  heif_suberror_Unsupported_data_version,
                  "Uncompressed block_reversed == 1 is not implemented yet");
   }
-  if (uncC->get_pixel_size() != 0) {
-    printf("unsupported pixel size\n");
+  if ((uncC->get_pixel_size() != 0) && ((uncC->get_interleave_type() != interleave_mode_pixel) && (uncC->get_interleave_type() != interleave_mode_multi_y))) {
     std::stringstream sstr;
-    sstr << "Uncompressed pixel_size of " << ((int) uncC->get_pixel_size()) << " is not implemented yet";
-    return Error(heif_error_Unsupported_feature,
-                 heif_suberror_Unsupported_data_version,
+    sstr << "Uncompressed pixel_size of " << ((int) uncC->get_pixel_size()) << " is only valid with interleave_type 1 or 5 (ISO/IEC 23001-17 5.2.1.7)";
+    return Error(heif_error_Invalid_input,
+                 heif_suberror_Invalid_parameter_value,
                  sstr.str());
   }
   return Error::Ok;
@@ -382,20 +381,29 @@ class UncompressedBitReader : public BitReader
     UncompressedBitReader(const std::vector<uint8_t>& data) : BitReader(data.data(), (int)data.size())
     {}
 
-    void markRowStart()
-    {
+    void markPixelStart() {
+      m_pixelStartOffset = get_current_byte_index();
+    }
+
+    void markRowStart() {
       m_rowStartOffset = get_current_byte_index();
     }
 
-    void markTileStart()
-    {
+    void markTileStart() {
       m_tileStartOffset = get_current_byte_index();
     }
 
-    void handleRowAlignment(uint32_t alignment)
-    {
+    inline void handlePixelAlignment(uint32_t pixel_size) {
+      if (pixel_size != 0) {
+        uint32_t bytes_in_pixel = get_current_byte_index() - m_pixelStartOffset;
+        uint32_t padding = pixel_size - bytes_in_pixel;
+        skip_bytes(padding);
+      }
+    }
+
+    void handleRowAlignment(uint32_t alignment) {
       if (alignment != 0) {
-        uint32_t bytes_in_row = get_current_byte_index() - m_tileStartOffset;
+        uint32_t bytes_in_row = get_current_byte_index() - m_rowStartOffset;
         uint32_t residual = bytes_in_row % alignment;
         if (residual != 0) {
           uint32_t padding = alignment - residual;
@@ -404,8 +412,7 @@ class UncompressedBitReader : public BitReader
       }
     }
 
-    void handleTileAlignment(uint32_t alignment)
-    {
+    void handleTileAlignment(uint32_t alignment) {
       if (alignment != 0) {
         uint32_t bytes_in_tile = get_current_byte_index() - m_tileStartOffset;
         uint32_t residual = bytes_in_tile % alignment;
@@ -417,6 +424,7 @@ class UncompressedBitReader : public BitReader
     }
 
   private:
+    int m_pixelStartOffset;
     int m_rowStartOffset;
     int m_tileStartOffset;
 };
@@ -592,6 +600,7 @@ public:
     for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
       srcBits.markRowStart();
       for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
+        srcBits.markPixelStart();
         for (ChannelListEntry &entry : channelList) {
           if (entry.use_channel) {
             uint64_t dst_row_offset = entry.getDestinationRowOffset(tile_row, tile_y);
@@ -600,6 +609,7 @@ public:
             srcBits.skip_bytes(entry.bytes_per_component_sample);
           }
         }
+        srcBits.handlePixelAlignment(m_uncC->get_pixel_size());
       }
       srcBits.handleRowAlignment(m_uncC->get_row_align_size());
     }
