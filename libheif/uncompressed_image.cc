@@ -398,6 +398,7 @@ static bool map_uncompressed_component_to_channel(const std::shared_ptr<Box_cmpd
   }
 }
 
+#if 0
 static uint32_t roundUpTo(uint32_t value, uint32_t alignment) {
     uint32_t residual = value % alignment;
     if (residual == 0) {
@@ -405,6 +406,7 @@ static uint32_t roundUpTo(uint32_t value, uint32_t alignment) {
     }
     return (value + alignment - residual);
 }
+#endif
 
 class UncompressedBitReader : public BitReader
 {
@@ -484,6 +486,11 @@ protected:
       return bytes_per_tile_row_src * tile_height;
     }
 
+    inline uint64_t getDestinationRowOffset(uint32_t tile_row, uint32_t tile_y) const {
+      uint64_t dst_row_number = tile_row * tile_height + tile_y;
+      return dst_row_number * dst_plane_stride;
+    }
+
     heif_channel channel;
     uint8_t* dst_plane;
     uint8_t* other_chroma_dst_plane;
@@ -506,7 +513,7 @@ protected:
   }
 
   protected:
-    void processComponentSample(UncompressedBitReader &srcBits, AbstractDecoder::ChannelListEntry &entry, uint64_t dst_row_offset, uint32_t tile_column,  uint32_t tile_x) {
+    void processComponentSample(UncompressedBitReader &srcBits, ChannelListEntry &entry, uint64_t dst_row_offset, uint32_t tile_column,  uint32_t tile_x) {
       uint64_t dst_col_number = tile_column * entry.tile_width + tile_x;
       uint64_t dst_column_offset = dst_col_number * entry.bytes_per_component_sample;
       int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
@@ -517,7 +524,7 @@ protected:
     // Not valid for Pixel interleave
     // Not valid for the Cb/Cr channels in Mixed Interleave
     // Not valid for multi-Y pixel interleave
-    void processComponentRow(AbstractDecoder::ChannelListEntry &entry, UncompressedBitReader &srcBits, uint64_t dst_row_offset, uint32_t tile_column)
+    void processComponentRow(ChannelListEntry &entry, UncompressedBitReader &srcBits, uint64_t dst_row_offset, uint32_t tile_column)
     {
       for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
         processComponentSample(srcBits, entry, dst_row_offset, tile_column, tile_x);
@@ -546,9 +553,6 @@ protected:
       }
       entry.bytes_per_component_sample = (component.component_bit_depth + 7) / 8;
       entry.bytes_per_tile_row_src = entry.tile_width * entry.bytes_per_component_sample;
-      if (m_uncC->get_row_align_size() > 0) {
-        entry.bytes_per_tile_row_src = roundUpTo(entry.bytes_per_tile_row_src, m_uncC->get_row_align_size());
-      }
       return entry;
     }
 };
@@ -569,26 +573,27 @@ public:
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         srcBits.markTileStart();
-        for (ChannelListEntry &entry : channelList) {
-          if (entry.use_channel) {
-            for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
-              srcBits.markRowStart();
-              uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
-              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-              processComponentRow(entry, srcBits, dst_row_offset, tile_column);
-              srcBits.handleRowAlignment(m_uncC->get_row_align_size());
-            }
-          } else {
-            // skip over the data we are not using
-            srcBits.skip_bytes(entry.get_bytes_per_tile());
-            continue;
-          }
-        }
+        processTile(srcBits, tile_row, tile_column);
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
     }
 
     return Error::Ok;
+  }
+
+  void processTile(UncompressedBitReader &srcBits, uint32_t tile_row, uint32_t tile_column) {
+    for (ChannelListEntry &entry : channelList) {
+      for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+        srcBits.markRowStart();
+        if (entry.use_channel) {
+          uint64_t dst_row_offset = entry.getDestinationRowOffset(tile_row, tile_y);
+          processComponentRow(entry, srcBits, dst_row_offset, tile_column);
+        } else {
+          srcBits.skip_bytes(entry.bytes_per_tile_row_src);
+        }
+        srcBits.handleRowAlignment(m_uncC->get_row_align_size());
+      }
+    }
   }
 };
 
@@ -607,26 +612,29 @@ public:
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         srcBits.markTileStart();
-        for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
-          srcBits.markRowStart();
-          uint64_t dst_row_number = tile_row * m_tile_height + tile_y;
-          for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
-            for (ChannelListEntry &entry : channelList) {
-              if (entry.use_channel) {
-                uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-                processComponentSample(srcBits, entry, dst_row_offset, tile_column,  tile_x);
-              } else {
-                srcBits.skip_bytes(entry.bytes_per_component_sample);
-              }
-            }
-          }
-          srcBits.handleRowAlignment(m_uncC->get_row_align_size());
-        }
+        processTile(srcBits, tile_row, tile_column);
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
     }
 
     return Error::Ok;
+  }
+
+  void processTile(UncompressedBitReader &srcBits, uint32_t tile_row, uint32_t tile_column) {
+    for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
+      srcBits.markRowStart();
+      for (uint32_t tile_x = 0; tile_x < m_tile_width; tile_x++) {
+        for (ChannelListEntry &entry : channelList) {
+          if (entry.use_channel) {
+            uint64_t dst_row_offset = entry.getDestinationRowOffset(tile_row, tile_y);
+            processComponentSample(srcBits, entry, dst_row_offset, tile_column, tile_x);
+          } else {
+            srcBits.skip_bytes(entry.bytes_per_component_sample);
+          }
+        }
+      }
+      srcBits.handleRowAlignment(m_uncC->get_row_align_size());
+    }
   }
 };
 
@@ -645,44 +653,47 @@ public:
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         srcBits.markTileStart();
-        bool haveProcessedChromaForThisTile = false;
-        for (ChannelListEntry &entry : channelList) {
-          if (entry.use_channel) {
-            if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
-              if (!haveProcessedChromaForThisTile) {
-                for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
-                  // TODO: row padding
-                  uint64_t dst_row_number = tile_row * entry.tile_width + tile_y;
-                  uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-                  for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
-                    uint64_t dst_column_number = tile_column * entry.tile_width + tile_x;
-                    uint64_t dst_column_offset = dst_column_number * entry.bytes_per_component_sample;
-                    int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
-                    memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
-                    val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
-                    memcpy(entry.other_chroma_dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
-                  }
-                  haveProcessedChromaForThisTile = true;
-                }
-              }
-            } else {
-              for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
-                uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
-                uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-                processComponentRow(entry, srcBits, dst_row_offset, tile_column);
-              }
-            }
-          } else {
-            // skip over the data we are not using
-            srcBits.skip_bytes(entry.get_bytes_per_tile());
-            continue;
-          }
-        }
+        processTile(srcBits, tile_row, tile_column);
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
     }
 
     return Error::Ok;
+  }
+
+  void processTile(UncompressedBitReader &srcBits, uint32_t tile_row, uint32_t tile_column) {
+    bool haveProcessedChromaForThisTile = false;
+    for (ChannelListEntry &entry : channelList) {
+      if (entry.use_channel) {
+        if ((entry.channel == heif_channel_Cb) || (entry.channel == heif_channel_Cr)) {
+          if (!haveProcessedChromaForThisTile) {
+            for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+              // TODO: row padding
+              uint64_t dst_row_number = tile_row * entry.tile_width + tile_y;
+              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
+              for (uint32_t tile_x = 0; tile_x < entry.tile_width; tile_x++) {
+                uint64_t dst_column_number = tile_column * entry.tile_width + tile_x;
+                uint64_t dst_column_offset = dst_column_number * entry.bytes_per_component_sample;
+                int val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+                memcpy(entry.dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
+                val = srcBits.get_bits(entry.bytes_per_component_sample * 8);
+                memcpy(entry.other_chroma_dst_plane + dst_row_offset + dst_column_offset, &val, entry.bytes_per_component_sample);
+              }
+              haveProcessedChromaForThisTile = true;
+            }
+          }
+        } else {
+          for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
+            uint64_t dst_row_offset = entry.getDestinationRowOffset(tile_row, tile_y);
+            processComponentRow(entry, srcBits, dst_row_offset, tile_column);
+          }
+        }
+      } else {
+        // skip over the data we are not using
+        srcBits.skip_bytes(entry.get_bytes_per_tile());
+        continue;
+      }
+    }
   }
 };
 
@@ -695,30 +706,31 @@ public:
 
   Error decode(const std::vector<uint8_t>& uncompressed_data, std::shared_ptr<HeifPixelImage>& img) override {
     UncompressedBitReader srcBits(uncompressed_data);
-
     buildChannelList(img);
-
     for (uint32_t tile_row = 0; tile_row < m_uncC->get_number_of_tile_rows(); tile_row++) {
       for (uint32_t tile_column = 0; tile_column < m_uncC->get_number_of_tile_columns(); tile_column++) {
         srcBits.markTileStart();
-        for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
-          uint64_t dst_row_number = tile_row * m_tile_height + tile_y;
-          for (ChannelListEntry &entry : channelList) {
-            srcBits.markRowStart();
-            if (entry.use_channel) {
-              uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;
-              processComponentRow(entry, srcBits, dst_row_offset, tile_column);
-            } else {
-              srcBits.skip_bytes(entry.bytes_per_tile_row_src);
-            }
-            srcBits.handleRowAlignment(m_uncC->get_row_align_size());
-          }
-        }
+        processTile(srcBits, tile_row, tile_column);
         srcBits.handleTileAlignment(m_uncC->get_tile_align_size());
       }
     }
-
     return Error::Ok;
+  }
+
+private:
+  void processTile(UncompressedBitReader &srcBits, uint32_t tile_row, uint32_t tile_column) {
+    for (uint32_t tile_y = 0; tile_y < m_tile_height; tile_y++) {
+      for (ChannelListEntry &entry : channelList) {
+        srcBits.markRowStart();
+        if (entry.use_channel) {
+          uint64_t dst_row_offset = entry.getDestinationRowOffset(tile_row, tile_y);
+          processComponentRow(entry, srcBits, dst_row_offset, tile_column);
+        } else {
+          srcBits.skip_bytes(entry.bytes_per_tile_row_src);
+        }
+        srcBits.handleRowAlignment(m_uncC->get_row_align_size());
+      }
+    }
   }
 };
 
@@ -746,8 +758,7 @@ public:
           srcBits.markTileStart();
           for (uint32_t tile_y = 0; tile_y < entry.tile_height; tile_y++) {
             srcBits.markRowStart();
-            uint64_t dst_row_number = tile_row * entry.tile_height + tile_y;
-            uint64_t dst_row_offset = dst_row_number * entry.dst_plane_stride;  
+            uint64_t dst_row_offset = entry.getDestinationRowOffset(tile_row, tile_y);
             processComponentRow(entry, srcBits, dst_row_offset, tile_column);
             srcBits.handleRowAlignment(m_uncC->get_row_align_size());
           }
