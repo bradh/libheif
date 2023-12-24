@@ -340,28 +340,6 @@ int UncompressedImageCodec::get_luma_bits_per_pixel_from_configuration_unci(cons
   }
 }
 
-#if 0
-static unsigned int get_bytes_per_pixel(const std::shared_ptr<Box_uncC>& uncC)
-{
-  unsigned int bytes = 0;
-  for (Box_uncC::Component component: uncC->get_components())
-  {
-    if (component.component_align_size == 0)
-    {
-      // TODO: needs more work when we have components with padding
-      unsigned int component_bytes = (component.component_bit_depth + 7) / 8;
-      bytes += component_bytes;
-    }
-    else
-    {
-      bytes += component.component_align_size;
-    }
-  }
-  return bytes;
-}
-
-#endif
-
 static bool map_uncompressed_component_to_channel(const std::shared_ptr<Box_cmpd> &cmpd, const Box_uncC::Component component, heif_channel *channel) {
   uint16_t component_index = component.component_index;
   uint16_t component_type = cmpd->get_components()[component_index].component_type;
@@ -397,16 +375,6 @@ static bool map_uncompressed_component_to_channel(const std::shared_ptr<Box_cmpd
     return false;
   }
 }
-
-#if 0
-static uint32_t roundUpTo(uint32_t value, uint32_t alignment) {
-    uint32_t residual = value % alignment;
-    if (residual == 0) {
-      return value;
-    }
-    return (value + alignment - residual);
-}
-#endif
 
 class UncompressedBitReader : public BitReader
 {
