@@ -114,7 +114,7 @@ public:
     *  starting to decode any frames.
     */
     NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency = false,
-              bool bDeviceFramePitched = false, const Rect *pCropRect = NULL, const Dim *pResizeDim = NULL,
+              bool bDeviceFramePitched = false,
               int maxWidth = 0, int maxHeight = 0, unsigned int clkRate = 1000,
               bool force_zero_latency = false);
     ~NvDecoder();
@@ -336,8 +336,6 @@ private:
     CUstream m_cuvidStream = 0;
     bool m_bDeviceFramePitched = false;
     size_t m_nDeviceFramePitch = 0;
-    Rect m_cropRect = {};
-    Dim m_resizeDim = {};
 
     std::ostringstream m_videoInfo;
     unsigned int m_nMaxWidth = 0, m_nMaxHeight = 0;

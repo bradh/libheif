@@ -304,32 +304,10 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     videoDecodeCreateInfo.ulMaxWidth = m_nMaxWidth;
     videoDecodeCreateInfo.ulMaxHeight = m_nMaxHeight;
 
-    if (!(m_cropRect.r && m_cropRect.b) && !(m_resizeDim.w && m_resizeDim.h)) {
-        m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
-        m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
-        videoDecodeCreateInfo.ulTargetWidth = pVideoFormat->coded_width;
-        videoDecodeCreateInfo.ulTargetHeight = pVideoFormat->coded_height;
-    } else {
-        if (m_resizeDim.w && m_resizeDim.h) {
-            videoDecodeCreateInfo.display_area.left = (short int) pVideoFormat->display_area.left;
-            videoDecodeCreateInfo.display_area.top = (short int) pVideoFormat->display_area.top;
-            videoDecodeCreateInfo.display_area.right = (short int) pVideoFormat->display_area.right;
-            videoDecodeCreateInfo.display_area.bottom = (short int) pVideoFormat->display_area.bottom;
-            m_nWidth = m_resizeDim.w;
-            m_nLumaHeight = m_resizeDim.h;
-        }
-
-        if (m_cropRect.r && m_cropRect.b) {
-            videoDecodeCreateInfo.display_area.left = (short int) m_cropRect.l;
-            videoDecodeCreateInfo.display_area.top = (short int) m_cropRect.t;
-            videoDecodeCreateInfo.display_area.right = (short int) m_cropRect.r;
-            videoDecodeCreateInfo.display_area.bottom = (short int) m_cropRect.b;
-            m_nWidth = m_cropRect.r - m_cropRect.l;
-            m_nLumaHeight = m_cropRect.b - m_cropRect.t;
-        }
-        videoDecodeCreateInfo.ulTargetWidth = m_nWidth;
-        videoDecodeCreateInfo.ulTargetHeight = m_nLumaHeight;
-    }
+    m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
+    m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
+    videoDecodeCreateInfo.ulTargetWidth = pVideoFormat->coded_width;
+    videoDecodeCreateInfo.ulTargetHeight = pVideoFormat->coded_height;
 
     m_nChromaHeight = (int)(ceil((float)m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat)));
     m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
@@ -417,33 +395,10 @@ int NvDecoder::ReconfigureDecoder(CUVIDEOFORMAT *pVideoFormat)
         m_bReconfigExternal = false;
         m_bReconfigExtPPChange = false;
         m_videoFormat = *pVideoFormat;
-        if (!(m_cropRect.r && m_cropRect.b) && !(m_resizeDim.w && m_resizeDim.h)) {
-            m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
-            m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
-            reconfigParams.ulTargetWidth = pVideoFormat->coded_width;
-            reconfigParams.ulTargetHeight = pVideoFormat->coded_height;
-        }
-        else {
-            if (m_resizeDim.w && m_resizeDim.h) {
-                reconfigParams.display_area.left = (short int) pVideoFormat->display_area.left;
-                reconfigParams.display_area.top = (short int) pVideoFormat->display_area.top;
-                reconfigParams.display_area.right = (short int) pVideoFormat->display_area.right;
-                reconfigParams.display_area.bottom = (short int) pVideoFormat->display_area.bottom;
-                m_nWidth = m_resizeDim.w;
-                m_nLumaHeight = m_resizeDim.h;
-            }
-
-            if (m_cropRect.r && m_cropRect.b) {
-                reconfigParams.display_area.left = (short int) m_cropRect.l;
-                reconfigParams.display_area.top = (short int) m_cropRect.t;
-                reconfigParams.display_area.right = (short int) m_cropRect.r;
-                reconfigParams.display_area.bottom = (short int) m_cropRect.b;
-                m_nWidth = m_cropRect.r - m_cropRect.l;
-                m_nLumaHeight = m_cropRect.b - m_cropRect.t;
-            }
-            reconfigParams.ulTargetWidth = m_nWidth;
-            reconfigParams.ulTargetHeight = m_nLumaHeight;
-        }
+        m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
+        m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
+        reconfigParams.ulTargetWidth = pVideoFormat->coded_width;
+        reconfigParams.ulTargetHeight = pVideoFormat->coded_height;
 
         m_nChromaHeight = (int)ceil((float)m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat));
         m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
@@ -468,23 +423,6 @@ int NvDecoder::setReconfigParams(const Rect *pCropRect, const Dim *pResizeDim)
 {
     m_bReconfigExternal = true;
     m_bReconfigExtPPChange = false;
-    if (pCropRect)
-    {
-        if (!((pCropRect->t == m_cropRect.t) && (pCropRect->l == m_cropRect.l) &&
-            (pCropRect->b == m_cropRect.b) && (pCropRect->r == m_cropRect.r)))
-        {
-            m_bReconfigExtPPChange = true;
-            m_cropRect = *pCropRect;
-        }
-    }
-    if (pResizeDim)
-    {
-        if (!((pResizeDim->w == m_resizeDim.w) && (pResizeDim->h == m_resizeDim.h)))
-        {
-            m_bReconfigExtPPChange = true;
-            m_resizeDim = *pResizeDim;
-        }
-    }
 
     // Clear existing output buffers of different size
     uint8_t *pFrame = NULL;
@@ -601,14 +539,11 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 }
 
 NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency, 
-    bool bDeviceFramePitched, const Rect *pCropRect, const Dim *pResizeDim, 
+    bool bDeviceFramePitched,
     int maxWidth, int maxHeight, unsigned int clkRate, bool force_zero_latency) :
     m_cuContext(cuContext), m_eCodec(eCodec), m_bDeviceFramePitched(bDeviceFramePitched),
     m_nMaxWidth (maxWidth), m_nMaxHeight(maxHeight), m_bForce_zero_latency(force_zero_latency)
 {
-    if (pCropRect) m_cropRect = *pCropRect;
-    if (pResizeDim) m_resizeDim = *pResizeDim;
-
     NVDEC_API_CALL(cuvidCtxLockCreate(&m_ctxLock, cuContext));
 
     ck(cuStreamCreate(&m_cuvidStream, CU_STREAM_DEFAULT));
