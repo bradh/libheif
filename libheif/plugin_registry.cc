@@ -100,6 +100,12 @@
 #include "plugins/encoder_openjph.h"
 #endif
 
+#if HAVE_NV_DECODER
+#include "plugins/decoder_nvdec.h"
+#endif
+
+#include "libheif/plugins/encoder_mask.h"
+
 std::set<const struct heif_decoder_plugin*> s_decoder_plugins;
 
 std::multiset<std::unique_ptr<struct heif_encoder_descriptor>,
@@ -199,8 +205,13 @@ void register_default_plugins()
   register_decoder(get_decoder_plugin_openjpeg());
 #endif
 
+<<<<<<< HEAD
 #if HAVE_OPENJPH_ENCODER
   register_encoder(get_encoder_plugin_openjph());
+=======
+#if HAVE_NV_DECODER
+  register_decoder(get_decoder_plugin_nvdec());
+>>>>>>> 29940dba (initial version of NVIDIA hw plugin)
 #endif
 
 #if WITH_UNCOMPRESSED_CODEC

@@ -229,6 +229,14 @@ if (WITH_OPENJPH_ENCODER OR WITH_OPENJPH_DECODER)
     find_package(OPENJPH)
 endif()
 
+# nvidia hardware decode
+
+plugin_option(NV_DECODER "NVIDIA Hardware HEVC/AVC/AV1 decoder" OFF OFF)
+if (WITH_NV_DECODER)
+    find_package(NVDEC)
+endif()
+
+
 # uncompressed
 
 option(WITH_UNCOMPRESSED_CODEC " Support internal ISO/IEC 23001-17 uncompressed codec (experimental) " OFF)
@@ -250,6 +258,7 @@ plugin_compilation_info(JPEG_DECODER JPEG "JPEG decoder")
 plugin_compilation_info(JPEG_ENCODER JPEG "JPEG encoder")
 plugin_compilation_info(OpenJPEG_DECODER OpenJPEG "OpenJPEG J2K decoder")
 plugin_compilation_info(OpenJPEG_ENCODER OpenJPEG "OpenJPEG J2K encoder")
+<<<<<<< HEAD
 # plugin_compilation_info(OPENJPH_DECODER OPENJPH "OpenJPH HT-J2K decoder")
 plugin_compilation_info(OPENJPH_ENCODER OPENJPH "OpenJPH HT-J2K encoder")
 plugin_compilation_info(UVG266_ENCODER UVG266 "uvg266 VVC enc. (experimental)")
@@ -332,6 +341,9 @@ format_compilation_info("JPEG2000" SUPPORTS_J2K_DECODING SUPPORTS_J2K_ENCODING)
 format_compilation_info("JPEG2000-HT" SUPPORTS_J2K_HT_DECODING SUPPORTS_J2K_HT_ENCODING)
 format_compilation_info("Uncompressed" SUPPORTS_UNCOMPRESSED_DECODING SUPPORTS_UNCOMPRESSED_ENCODING)
 message("")
+=======
+plugin_compilation_info(NV_DECODER NVDEC "NVIDIA hardware decoder")
+>>>>>>> 29940dba (initial version of NVIDIA hw plugin)
 
 # --- Libsharpyuv color space transforms
 
