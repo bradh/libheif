@@ -177,6 +177,14 @@ if (WITH_FFMPEG_DECODER)
     find_package(FFMPEG COMPONENTS avcodec)
 endif ()
 
+# nvidia hardware decode
+
+plugin_option(NV_DECODER "NVIDIA Hardware HEVC/AVC/AV1 decoder" OFF OFF)
+if (WITH_NV_DECODER)
+    find_package(NVDEC)
+endif()
+
+
 # uncompressed
 
 option(WITH_UNCOMPRESSED_CODEC " Support internal ISO/IEC 23001-17 uncompressed codec (experimental) " OFF)
@@ -198,7 +206,7 @@ plugin_compilation_info(JPEG_DECODER JPEG "JPEG decoder")
 plugin_compilation_info(JPEG_ENCODER JPEG "JPEG encoder")
 plugin_compilation_info(OpenJPEG_DECODER OpenJPEG "OpenJPEG J2K decoder")
 plugin_compilation_info(OpenJPEG_ENCODER OpenJPEG "OpenJPEG J2K encoder")
-
+plugin_compilation_info(NV_DECODER NVDEC "NVIDIA hardware decoder")
 
 # --- Libsharpyuv color space transforms
 
