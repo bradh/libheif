@@ -113,7 +113,7 @@ public:
     *  Application must call this function to initialize the decoder, before
     *  starting to decode any frames.
     */
-    NvDecoder(CUcontext cuContext, bool bUseDeviceFrame, cudaVideoCodec eCodec, bool bLowLatency = false,
+    NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency = false,
               bool bDeviceFramePitched = false, const Rect *pCropRect = NULL, const Dim *pResizeDim = NULL,
               int maxWidth = 0, int maxHeight = 0, unsigned int clkRate = 1000,
               bool force_zero_latency = false);
@@ -311,7 +311,6 @@ private:
     CUvideoctxlock m_ctxLock;
     CUvideoparser m_hParser = NULL;
     CUvideodecoder m_hDecoder = NULL;
-    bool m_bUseDeviceFrame;
     // dimension of the output
     unsigned int m_nWidth = 0, m_nLumaHeight = 0, m_nChromaHeight = 0;
     unsigned int m_nNumChromaPlanes = 0;
