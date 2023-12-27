@@ -176,7 +176,6 @@ struct heif_error nvdec_push_data(void *decoder, const void *frame_data, size_t 
 }
 
 
-// TODO: implement properly.
 struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
 {
     struct nvdec_context *ctx = (struct nvdec_context *)decoder;
@@ -214,7 +213,7 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
         return err;
     }
     
-    NvDecoder dec(cuContext, false, cudaVideoCodec_HEVC);
+    NvDecoder dec(cuContext, cudaVideoCodec_HEVC);
     uint8_t *hevc_data;
     size_t hevc_data_size;
     nalus.buildWithStartCodes(&hevc_data, &hevc_data_size);

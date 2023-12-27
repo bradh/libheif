@@ -492,16 +492,7 @@ int NvDecoder::setReconfigParams(const Rect *pCropRect, const Dim *pResizeDim)
     {
         pFrame = m_vpFrame.back();
         m_vpFrame.pop_back();
-        if (m_bUseDeviceFrame)
-        {
-            CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
-            CUDA_DRVAPI_CALL(cuMemFree((CUdeviceptr)pFrame));
-            CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
-        }
-        else
-        {
-            delete pFrame;
-        }
+        delete pFrame;
     }
 
     return 1;
@@ -565,21 +556,7 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
             // Not enough frames in stock
             m_nFrameAlloc++;
             uint8_t *pFrame = NULL;
-            if (m_bUseDeviceFrame)
-            {
-                if (m_bDeviceFramePitched)
-                {
-                    CUDA_DRVAPI_CALL(cuMemAllocPitch((CUdeviceptr *)&pFrame, &m_nDeviceFramePitch, GetWidth() * m_nBPP, m_nLumaHeight + (m_nChromaHeight * m_nNumChromaPlanes), 16));
-                }
-                else
-                {
-                    CUDA_DRVAPI_CALL(cuMemAlloc((CUdeviceptr *)&pFrame, GetFrameSize()));
-                }
-            }
-            else
-            {
-                pFrame = new uint8_t[GetFrameSize()];
-            }
+            pFrame = new uint8_t[GetFrameSize()];
             m_vpFrame.push_back(pFrame);
         }
         pDecodedFrame = m_vpFrame[m_nDecodedFrame - 1];
@@ -590,7 +567,7 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
     m.srcDevice = dpSrcFrame;
     m.srcPitch = nSrcPitch;
-    m.dstMemoryType = m_bUseDeviceFrame ? CU_MEMORYTYPE_DEVICE : CU_MEMORYTYPE_HOST;
+    m.dstMemoryType = CU_MEMORYTYPE_HOST;
     m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame);
     m.dstPitch = m_nDeviceFramePitch ? m_nDeviceFramePitch : GetWidth() * m_nBPP;
     m.WidthInBytes = GetWidth() * m_nBPP;
@@ -623,10 +600,10 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     return 1;
 }
 
-NvDecoder::NvDecoder(CUcontext cuContext, bool bUseDeviceFrame, cudaVideoCodec eCodec, bool bLowLatency, 
+NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency, 
     bool bDeviceFramePitched, const Rect *pCropRect, const Dim *pResizeDim, 
     int maxWidth, int maxHeight, unsigned int clkRate, bool force_zero_latency) :
-    m_cuContext(cuContext), m_bUseDeviceFrame(bUseDeviceFrame), m_eCodec(eCodec), m_bDeviceFramePitched(bDeviceFramePitched),
+    m_cuContext(cuContext), m_eCodec(eCodec), m_bDeviceFramePitched(bDeviceFramePitched),
     m_nMaxWidth (maxWidth), m_nMaxHeight(maxHeight), m_bForce_zero_latency(force_zero_latency)
 {
     if (pCropRect) m_cropRect = *pCropRect;
@@ -666,14 +643,7 @@ NvDecoder::~NvDecoder() {
 
     for (uint8_t *pFrame : m_vpFrame)
     {
-        if (m_bUseDeviceFrame)
-        {
-            cuMemFree((CUdeviceptr)pFrame);
-        }
-        else
-        {
-            delete[] pFrame;
-        }
+        delete[] pFrame;
     }
     cuCtxPopCurrent(NULL);
 
