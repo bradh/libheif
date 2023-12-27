@@ -115,7 +115,7 @@ public:
     */
     NvDecoder(CUcontext cuContext, bool bUseDeviceFrame, cudaVideoCodec eCodec, bool bLowLatency = false,
               bool bDeviceFramePitched = false, const Rect *pCropRect = NULL, const Dim *pResizeDim = NULL,
-              bool extract_user_SEI_Message = false, int maxWidth = 0, int maxHeight = 0, unsigned int clkRate = 1000,
+              int maxWidth = 0, int maxHeight = 0, unsigned int clkRate = 1000,
               bool force_zero_latency = false);
     ~NvDecoder();
 
@@ -279,11 +279,6 @@ private:
     static int CUDAAPI HandleOperatingPointProc(void *pUserData, CUVIDOPERATINGPOINTINFO *pOPInfo) { return ((NvDecoder *)pUserData)->GetOperatingPoint(pOPInfo); }
 
     /**
-    *   @brief  Callback function to be registered for getting a callback when all the unregistered user SEI Messages are parsed for a frame.
-    */
-    static int CUDAAPI HandleSEIMessagesProc(void *pUserData, CUVIDSEIMESSAGEINFO *pSEIMessageInfo) { return ((NvDecoder *)pUserData)->GetSEIMessage(pSEIMessageInfo); } 
-
-    /**
     *   @brief  This function gets called when a sequence is ready to be decoded. The function also gets called
         when there is format change
     */
@@ -305,11 +300,6 @@ private:
     *   @brief  This function gets called when AV1 sequence encounter more than one operating points
     */
     int GetOperatingPoint(CUVIDOPERATINGPOINTINFO *pOPInfo);
-
-    /**
-    *   @brief  This function gets called when all unregistered user SEI messages are parsed for a frame
-    */
-    int GetSEIMessage(CUVIDSEIMESSAGEINFO *pSEIMessageInfo);
  
     /**
     *   @brief  This function reconfigure decoder if there is a change in sequence params.
@@ -341,9 +331,6 @@ private:
     std::vector<int64_t> m_vTimestamp;
     int m_nDecodedFrame = 0, m_nDecodedFrameReturned = 0;
     int m_nDecodePicCnt = 0, m_nPicNumInDecodeOrder[MAX_FRM_CNT];
-    CUVIDSEIMESSAGEINFO *m_pCurrSEIMessage = NULL;
-    CUVIDSEIMESSAGEINFO m_SEIMessagesDisplayOrder[MAX_FRM_CNT];
-    FILE *m_fpSEI = NULL;
     bool m_bEndDecodeDone = false;
     std::mutex m_mtxVPFrame;
     int m_nFrameAlloc = 0;
@@ -366,5 +353,4 @@ private:
     // latency for All-Intra and IPPP sequences, the below flag will enable
     // the display callback immediately after the decode callback.
     bool m_bForce_zero_latency = false;
-    bool m_bExtractSEIMessage = false;
 };
