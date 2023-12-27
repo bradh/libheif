@@ -543,47 +543,6 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     videoProcessingParameters.unpaired_field = pDispInfo->repeat_first_field < 0;
     videoProcessingParameters.output_stream = m_cuvidStream;
 
-    if (m_bExtractSEIMessage)
-    {
-        if (m_SEIMessagesDisplayOrder[pDispInfo->picture_index].pSEIData)
-        {
-            // Write SEI Message
-            uint8_t *seiBuffer = (uint8_t *)(m_SEIMessagesDisplayOrder[pDispInfo->picture_index].pSEIData);
-            uint32_t seiNumMessages = m_SEIMessagesDisplayOrder[pDispInfo->picture_index].sei_message_count;
-            CUSEIMESSAGE *seiMessagesInfo = m_SEIMessagesDisplayOrder[pDispInfo->picture_index].pSEIMessage;
-            if (m_fpSEI)
-            {
-                for (uint32_t i = 0; i < seiNumMessages; i++)
-                {
-                    if ((m_eCodec == cudaVideoCodec_H264) || (m_eCodec == cudaVideoCodec_H264_SVC) || (m_eCodec == cudaVideoCodec_H264_MVC) || (m_eCodec == cudaVideoCodec_HEVC))
-                    {    
-                        switch (seiMessagesInfo[i].sei_message_type)
-                        {
-                            case SEI_TYPE_TIME_CODE:
-                            {
-                                HEVCSEITIMECODE *timecode = (HEVCSEITIMECODE *)seiBuffer;
-                                fwrite(timecode, sizeof(HEVCSEITIMECODE), 1, m_fpSEI);
-                            }
-                            break;
-                            case SEI_TYPE_USER_DATA_UNREGISTERED:
-                            {
-                                fwrite(seiBuffer, seiMessagesInfo[i].sei_message_size, 1, m_fpSEI);
-                            }
-                            break;
-                        }            
-                    }
-                    if (m_eCodec == cudaVideoCodec_AV1)
-                    {
-                        fwrite(seiBuffer, seiMessagesInfo[i].sei_message_size, 1, m_fpSEI);
-                    }    
-                    seiBuffer += seiMessagesInfo[i].sei_message_size;
-                }
-            }
-            free(m_SEIMessagesDisplayOrder[pDispInfo->picture_index].pSEIData);
-            free(m_SEIMessagesDisplayOrder[pDispInfo->picture_index].pSEIMessage);
-        }
-    }
-
     CUdeviceptr dpSrcFrame = 0;
     unsigned int nSrcPitch = 0;
     CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
@@ -664,50 +623,11 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     return 1;
 }
 
-int NvDecoder::GetSEIMessage(CUVIDSEIMESSAGEINFO *pSEIMessageInfo)
-{
-    uint32_t seiNumMessages = pSEIMessageInfo->sei_message_count;
-    CUSEIMESSAGE *seiMessagesInfo = pSEIMessageInfo->pSEIMessage;
-    size_t totalSEIBufferSize = 0;
-    if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRM_CNT))
-    {
-        printf("Invalid picture index (%d)\n", pSEIMessageInfo->picIdx);
-        return 0;
-    }
-    for (uint32_t i = 0; i < seiNumMessages; i++)
-    {
-        totalSEIBufferSize += seiMessagesInfo[i].sei_message_size;
-    }
-    if (!m_pCurrSEIMessage)
-    {
-        printf("Out of Memory, Allocation failed for m_pCurrSEIMessage\n");
-        return 0;
-    }
-    m_pCurrSEIMessage->pSEIData = malloc(totalSEIBufferSize);
-    if (!m_pCurrSEIMessage->pSEIData)
-    {
-        printf("Out of Memory, Allocation failed for SEI Buffer\n");
-        return 0;
-    }
-    memcpy(m_pCurrSEIMessage->pSEIData, pSEIMessageInfo->pSEIData, totalSEIBufferSize);
-    m_pCurrSEIMessage->pSEIMessage = (CUSEIMESSAGE *)malloc(sizeof(CUSEIMESSAGE) * seiNumMessages);
-    if (!m_pCurrSEIMessage->pSEIMessage)
-    {
-        free(m_pCurrSEIMessage->pSEIData);
-        m_pCurrSEIMessage->pSEIData = NULL;
-        return 0;
-    }
-    memcpy(m_pCurrSEIMessage->pSEIMessage, pSEIMessageInfo->pSEIMessage, sizeof(CUSEIMESSAGE) * seiNumMessages);
-    m_pCurrSEIMessage->sei_message_count = pSEIMessageInfo->sei_message_count;
-    m_SEIMessagesDisplayOrder[pSEIMessageInfo->picIdx] = *m_pCurrSEIMessage;
-    return 1;
-}
-
 NvDecoder::NvDecoder(CUcontext cuContext, bool bUseDeviceFrame, cudaVideoCodec eCodec, bool bLowLatency, 
-    bool bDeviceFramePitched, const Rect *pCropRect, const Dim *pResizeDim, bool extract_user_SEI_Message,
+    bool bDeviceFramePitched, const Rect *pCropRect, const Dim *pResizeDim, 
     int maxWidth, int maxHeight, unsigned int clkRate, bool force_zero_latency) :
     m_cuContext(cuContext), m_bUseDeviceFrame(bUseDeviceFrame), m_eCodec(eCodec), m_bDeviceFramePitched(bDeviceFramePitched),
-    m_nMaxWidth (maxWidth), m_nMaxHeight(maxHeight), m_bForce_zero_latency(force_zero_latency), m_bExtractSEIMessage(extract_user_SEI_Message)
+    m_nMaxWidth (maxWidth), m_nMaxHeight(maxHeight), m_bForce_zero_latency(force_zero_latency)
 {
     if (pCropRect) m_cropRect = *pCropRect;
     if (pResizeDim) m_resizeDim = *pResizeDim;
@@ -718,12 +638,6 @@ NvDecoder::NvDecoder(CUcontext cuContext, bool bUseDeviceFrame, cudaVideoCodec e
 
     decoderSessionID = 0;
 
-    if (m_bExtractSEIMessage)
-    {
-        m_fpSEI = fopen("sei_message.txt", "wb");
-        m_pCurrSEIMessage = new CUVIDSEIMESSAGEINFO;
-        memset(&m_SEIMessagesDisplayOrder, 0, sizeof(m_SEIMessagesDisplayOrder));
-    }
     CUVIDPARSERPARAMS videoParserParameters = {};
     videoParserParameters.CodecType = eCodec;
     videoParserParameters.ulMaxNumDecodeSurfaces = 1;
@@ -734,22 +648,11 @@ NvDecoder::NvDecoder(CUcontext cuContext, bool bUseDeviceFrame, cudaVideoCodec e
     videoParserParameters.pfnDecodePicture = HandlePictureDecodeProc;
     videoParserParameters.pfnDisplayPicture = m_bForce_zero_latency ? NULL : HandlePictureDisplayProc;
     videoParserParameters.pfnGetOperatingPoint = HandleOperatingPointProc;
-    videoParserParameters.pfnGetSEIMsg = m_bExtractSEIMessage ? HandleSEIMessagesProc : NULL;
+    videoParserParameters.pfnGetSEIMsg = NULL;
     NVDEC_API_CALL(cuvidCreateVideoParser(&m_hParser, &videoParserParameters));
 }
 
 NvDecoder::~NvDecoder() {
-
-
-    if (m_pCurrSEIMessage) {
-        delete m_pCurrSEIMessage;
-        m_pCurrSEIMessage = NULL;
-    }
-
-    if (m_fpSEI) {
-        fclose(m_fpSEI);
-        m_fpSEI = NULL;
-    }
 
     if (m_hParser) {
         cuvidDestroyVideoParser(m_hParser);
