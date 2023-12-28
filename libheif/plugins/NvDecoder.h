@@ -261,7 +261,6 @@ private:
     int m_nBitDepthMinus8 = 0;
     int m_nBPP = 1;
     CUVIDEOFORMAT m_videoFormat = {};
-    Rect m_displayRect = {};
     // stock of frames
     std::vector<uint8_t *> m_vpFrame;
     int m_nDecodedFrame = 0, m_nDecodedFrameReturned = 0;
