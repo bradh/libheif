@@ -199,7 +199,7 @@ public:
     *   @param  pData - pointer to the data buffer that is to be decoded
     *   @param  nSize - size of the data buffer in bytes
     */
-    int Decode(const uint8_t *pData, int nSize);
+    int Decode(const uint8_t *pData, size_t nSize);
 
     /**
     *   @brief  This function returns a decoded frame. This function should be called in a loop for

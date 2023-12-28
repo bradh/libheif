@@ -217,8 +217,7 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
     uint8_t *hevc_data;
     size_t hevc_data_size;
     nalus.buildWithStartCodes(&hevc_data, &hevc_data_size);
-    // TODO: rework API to size_t
-    int nFrameReturned = dec.Decode(hevc_data, (int)hevc_data_size);
+    int nFrameReturned = dec.Decode(hevc_data, hevc_data_size);
     if (nFrameReturned > 0) {
         std::cout << dec.GetVideoInfo() << std::endl;
         std::cout << "output format: " << dec.GetOutputFormat() << std::endl;

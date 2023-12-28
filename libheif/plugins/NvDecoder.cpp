@@ -470,7 +470,7 @@ NvDecoder::~NvDecoder() {
     cuvidCtxLockDestroy(m_ctxLock);
 }
 
-int NvDecoder::Decode(const uint8_t *pData, int nSize)
+int NvDecoder::Decode(const uint8_t *pData, size_t nSize)
 {
     m_nDecodedFrame = 0;
     m_nDecodedFrameReturned = 0;
