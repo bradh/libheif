@@ -114,7 +114,7 @@ public:
     *  starting to decode any frames.
     */
     NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency = false,
-              int maxWidth = 0, int maxHeight = 0, unsigned int clkRate = 1000,
+              unsigned int clkRate = 1000,
               bool force_zero_latency = false);
     ~NvDecoder();
 
@@ -294,11 +294,6 @@ private:
     *   @brief  This function gets called when AV1 sequence encounter more than one operating points
     */
     int GetOperatingPoint(CUVIDOPERATINGPOINTINFO *pOPInfo);
- 
-    /**
-    *   @brief  This function reconfigure decoder if there is a change in sequence params.
-    */
-    int ReconfigureDecoder(CUVIDEOFORMAT *pVideoFormat);
 
 private:
     CUcontext m_cuContext = NULL;
@@ -330,9 +325,6 @@ private:
     CUstream m_cuvidStream = 0;
 
     std::ostringstream m_videoInfo;
-    unsigned int m_nMaxWidth = 0, m_nMaxHeight = 0;
-    bool m_bReconfigExternal = false;
-    bool m_bReconfigExtPPChange = false;
 
     unsigned int m_nOperatingPoint = 0;
     bool  m_bDispAllLayers = false;
