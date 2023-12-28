@@ -219,7 +219,6 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
     nalus.buildWithStartCodes(&hevc_data, &hevc_data_size);
     int nFrameReturned = dec.Decode(hevc_data, hevc_data_size);
     if (nFrameReturned > 0) {
-        // std::cout << dec.GetVideoInfo() << std::endl;
         uint8_t *pFrame = dec.GetFrame();
 
         // convert result to heif pixel image

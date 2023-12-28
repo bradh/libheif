@@ -48,59 +48,6 @@
     }                                                                                                                            \
     while (0)
 
-static const char * GetVideoCodecString(cudaVideoCodec eCodec) {
-    static struct {
-        cudaVideoCodec eCodec;
-        const char *name;
-    } aCodecName [] = {
-        { cudaVideoCodec_MPEG1,     "MPEG-1"       },
-        { cudaVideoCodec_MPEG2,     "MPEG-2"       },
-        { cudaVideoCodec_MPEG4,     "MPEG-4 (ASP)" },
-        { cudaVideoCodec_VC1,       "VC-1/WMV"     },
-        { cudaVideoCodec_H264,      "AVC/H.264"    },
-        { cudaVideoCodec_JPEG,      "M-JPEG"       },
-        { cudaVideoCodec_H264_SVC,  "H.264/SVC"    },
-        { cudaVideoCodec_H264_MVC,  "H.264/MVC"    },
-        { cudaVideoCodec_HEVC,      "H.265/HEVC"   },
-        { cudaVideoCodec_VP8,       "VP8"          },
-        { cudaVideoCodec_VP9,       "VP9"          },
-        { cudaVideoCodec_AV1,       "AV1"          },
-        { cudaVideoCodec_NumCodecs, "Invalid"      },
-        { cudaVideoCodec_YUV420,    "YUV  4:2:0"   },
-        { cudaVideoCodec_YV12,      "YV12 4:2:0"   },
-        { cudaVideoCodec_NV12,      "NV12 4:2:0"   },
-        { cudaVideoCodec_YUYV,      "YUYV 4:2:2"   },
-        { cudaVideoCodec_UYVY,      "UYVY 4:2:2"   },
-    };
-
-    if (eCodec >= 0 && eCodec <= cudaVideoCodec_NumCodecs) {
-        return aCodecName[eCodec].name;
-    }
-    for (size_t i = cudaVideoCodec_NumCodecs + 1; i < sizeof(aCodecName) / sizeof(aCodecName[0]); i++) {
-        if (eCodec == aCodecName[i].eCodec) {
-            return aCodecName[eCodec].name;
-        }
-    }
-    return "Unknown";
-}
-
-static const char * GetVideoChromaFormatString(cudaVideoChromaFormat eChromaFormat) {
-    static struct {
-        cudaVideoChromaFormat eChromaFormat;
-        const char *name;
-    } aChromaFormatName[] = {
-        { cudaVideoChromaFormat_Monochrome, "YUV 400 (Monochrome)" },
-        { cudaVideoChromaFormat_420,        "YUV 420"              },
-        { cudaVideoChromaFormat_422,        "YUV 422"              },
-        { cudaVideoChromaFormat_444,        "YUV 444"              },
-    };
-
-    if (eChromaFormat >= 0 && eChromaFormat < sizeof(aChromaFormatName) / sizeof(aChromaFormatName[0])) {
-        return aChromaFormatName[eChromaFormat].name;
-    }
-    return "Unknown";
-}
-
 static float GetChromaHeightFactor(cudaVideoSurfaceFormat eSurfaceFormat)
 {
     float factor = 0.5;
@@ -165,21 +112,6 @@ int NvDecoder::GetOperatingPoint(CUVIDOPERATINGPOINTINFO *pOPInfo)
 */
 int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
 {
-    m_videoInfo.str("");
-    m_videoInfo.clear();
-    m_videoInfo << "Video Input Information" << std::endl
-        << "\tCodec        : " << GetVideoCodecString(pVideoFormat->codec) << std::endl
-        << "\tFrame rate   : " << pVideoFormat->frame_rate.numerator << "/" << pVideoFormat->frame_rate.denominator
-            << " = " << 1.0 * pVideoFormat->frame_rate.numerator / pVideoFormat->frame_rate.denominator << " fps" << std::endl
-        << "\tSequence     : " << (pVideoFormat->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
-        << "\tCoded size   : [" << pVideoFormat->coded_width << ", " << pVideoFormat->coded_height << "]" << std::endl
-        << "\tDisplay area : [" << pVideoFormat->display_area.left << ", " << pVideoFormat->display_area.top << ", "
-            << pVideoFormat->display_area.right << ", " << pVideoFormat->display_area.bottom << "]" << std::endl
-        << "\tChroma       : " << GetVideoChromaFormatString(pVideoFormat->chroma_format) << std::endl
-        << "\tBit depth    : " << pVideoFormat->bit_depth_luma_minus8 + 8
-    ;
-    m_videoInfo << std::endl;
-
     int nDecodeSurface = pVideoFormat->min_num_decode_surfaces;
 
     CUVIDDECODECAPS decodecaps;
@@ -298,15 +230,6 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     m_nChromaHeight = (int)(ceil((float)m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat)));
     m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
     m_nSurfaceHeight = (int) videoDecodeCreateInfo.ulTargetHeight;
-
-    m_videoInfo << "Video Decoding Params:" << std::endl
-        << "\tNum Surfaces : " << videoDecodeCreateInfo.ulNumDecodeSurfaces << std::endl
-        << "\tCrop         : [" << videoDecodeCreateInfo.display_area.left << ", " << videoDecodeCreateInfo.display_area.top << ", "
-        << videoDecodeCreateInfo.display_area.right << ", " << videoDecodeCreateInfo.display_area.bottom << "]" << std::endl
-        << "\tResize       : " << videoDecodeCreateInfo.ulTargetWidth << "x" << videoDecodeCreateInfo.ulTargetHeight << std::endl
-        << "\tDeinterlace  : " << std::vector<const char *>{"Weave", "Bob", "Adaptive"}[videoDecodeCreateInfo.DeinterlaceMode]
-    ;
-    m_videoInfo << std::endl;
 
     CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
     NVDEC_API_CALL(cuvidCreateDecoder(&m_hDecoder, &videoDecodeCreateInfo));

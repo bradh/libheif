@@ -164,11 +164,6 @@ public:
     CUVIDEOFORMAT GetVideoFormatInfo() { assert(m_nWidth); return m_videoFormat; }
 
     /**
-    *   @brief  This function is used to print information about the video stream
-    */
-    std::string GetVideoInfo() const { return m_videoInfo.str(); }
-
-    /**
     *   @brief  This function decodes a frame and returns the number of frames that are available for
     *   display. All frames that are available for display should be read before making a subsequent decode call.
     *   @param  pData - pointer to the data buffer that is to be decoded
@@ -247,8 +242,6 @@ private:
     CUVIDEOFORMAT m_videoFormat = {};
     uint8_t * dstFrame;
     CUstream m_cuvidStream = 0;
-
-    std::ostringstream m_videoInfo;
 
     unsigned int m_nOperatingPoint = 0;
     bool  m_bDispAllLayers = false;
