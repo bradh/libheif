@@ -422,11 +422,6 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     CUDA_DRVAPI_CALL(cuStreamSynchronize(m_cuvidStream));
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
 
-    if ((int)m_vTimestamp.size() < m_nDecodedFrame) {
-        m_vTimestamp.resize(m_vpFrame.size());
-    }
-    m_vTimestamp[m_nDecodedFrame - 1] = pDispInfo->timestamp;
-
     NVDEC_API_CALL(cuvidUnmapVideoFrame(m_hDecoder, dpSrcFrame));
     return 1;
 }
@@ -492,36 +487,26 @@ int NvDecoder::Decode(const uint8_t *pData, int nSize, int nFlags, int64_t nTime
     return m_nDecodedFrame;
 }
 
-uint8_t* NvDecoder::GetFrame(int64_t* pTimestamp)
+uint8_t* NvDecoder::GetFrame()
 {
     if (m_nDecodedFrame > 0)
     {
         std::lock_guard<std::mutex> lock(m_mtxVPFrame);
         m_nDecodedFrame--;
-        if (pTimestamp)
-            *pTimestamp = m_vTimestamp[m_nDecodedFrameReturned];
         return m_vpFrame[m_nDecodedFrameReturned++];
     }
 
     return NULL;
 }
 
-uint8_t* NvDecoder::GetLockedFrame(int64_t* pTimestamp)
+uint8_t* NvDecoder::GetLockedFrame()
 {
     uint8_t *pFrame;
-    uint64_t timestamp;
     if (m_nDecodedFrame > 0) {
         std::lock_guard<std::mutex> lock(m_mtxVPFrame);
         m_nDecodedFrame--;
         pFrame = m_vpFrame[0];
         m_vpFrame.erase(m_vpFrame.begin(), m_vpFrame.begin() + 1);
-        
-        timestamp = m_vTimestamp[0];
-        m_vTimestamp.erase(m_vTimestamp.begin(), m_vTimestamp.begin() + 1);
-        
-        if (pTimestamp)
-            *pTimestamp = timestamp;
-        
         return pFrame;
     }
 
@@ -532,8 +517,4 @@ void NvDecoder::UnlockFrame(uint8_t **pFrame)
 {
     std::lock_guard<std::mutex> lock(m_mtxVPFrame);
     m_vpFrame.insert(m_vpFrame.end(), &pFrame[0], &pFrame[1]);
-    
-    // add a dummy entry for timestamp
-    uint64_t timestamp[2] = {0};
-    m_vTimestamp.insert(m_vTimestamp.end(), &timestamp[0], &timestamp[1]);
 }
