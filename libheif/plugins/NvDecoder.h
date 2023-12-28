@@ -241,18 +241,14 @@ private:
     unsigned int m_nNumChromaPlanes = 0;
     // height of the mapped surface 
     int m_nSurfaceHeight = 0;
-    int m_nSurfaceWidth = 0;
     cudaVideoCodec m_eCodec = cudaVideoCodec_NumCodecs;
     cudaVideoChromaFormat m_eChromaFormat = cudaVideoChromaFormat_420;
     cudaVideoSurfaceFormat m_eOutputFormat = cudaVideoSurfaceFormat_NV12;
     int m_nBitDepthMinus8 = 0;
     int m_nBPP = 1;
     CUVIDEOFORMAT m_videoFormat = {};
-    // stock of frames
-    std::vector<uint8_t *> m_vpFrame;
-    int m_nDecodedFrame = 0, m_nDecodedFrameReturned = 0;
+    uint8_t * dstFrame;
     bool m_bEndDecodeDone = false;
-    int m_nFrameAlloc = 0;
     CUstream m_cuvidStream = 0;
 
     std::ostringstream m_videoInfo;

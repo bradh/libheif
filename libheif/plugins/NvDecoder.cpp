@@ -298,7 +298,6 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     m_nChromaHeight = (int)(ceil((float)m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat)));
     m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
     m_nSurfaceHeight = (int) videoDecodeCreateInfo.ulTargetHeight;
-    m_nSurfaceWidth = (int) videoDecodeCreateInfo.ulTargetWidth;
 
     m_videoInfo << "Video Decoding Params:" << std::endl
         << "\tNum Surfaces : " << videoDecodeCreateInfo.ulNumDecodeSurfaces << std::endl
@@ -365,26 +364,15 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
         printf("Decode Error occurred for picture.\n");
     }
 
-    uint8_t *pDecodedFrame = nullptr;
-    {
-        if ((unsigned)++m_nDecodedFrame > m_vpFrame.size())
-        {
-            // Not enough frames in stock
-            m_nFrameAlloc++;
-            uint8_t *pFrame = NULL;
-            pFrame = new uint8_t[GetFrameSize()];
-            m_vpFrame.push_back(pFrame);
-        }
-        pDecodedFrame = m_vpFrame[m_nDecodedFrame - 1];
-    }
-
+    dstFrame = new uint8_t[GetFrameSize()];
+    
     // Copy luma plane
     CUDA_MEMCPY2D m = { 0 };
     m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
     m.srcDevice = dpSrcFrame;
     m.srcPitch = nSrcPitch;
     m.dstMemoryType = CU_MEMORYTYPE_HOST;
-    m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame);
+    m.dstDevice = (CUdeviceptr)(m.dstHost = dstFrame);
     m.dstPitch = GetWidth() * m_nBPP;
     m.WidthInBytes = GetWidth() * m_nBPP;
     m.Height = m_nLumaHeight;
@@ -393,14 +381,14 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     // Copy chroma plane
     // NVDEC output has luma height aligned by 2. Adjust chroma offset by aligning height
     m.srcDevice = (CUdeviceptr)((uint8_t *)dpSrcFrame + m.srcPitch * ((m_nSurfaceHeight + 1) & ~1));
-    m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame + m.dstPitch * m_nLumaHeight);
+    m.dstDevice = (CUdeviceptr)(m.dstHost = dstFrame + m.dstPitch * m_nLumaHeight);
     m.Height = m_nChromaHeight;
     CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
 
     if (m_nNumChromaPlanes == 2)
     {
         m.srcDevice = (CUdeviceptr)((uint8_t *)dpSrcFrame + m.srcPitch * ((m_nSurfaceHeight + 1) & ~1) * 2);
-        m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame + m.dstPitch * m_nLumaHeight * 2);
+        m.dstDevice = (CUdeviceptr)(m.dstHost = dstFrame + m.dstPitch * m_nLumaHeight * 2);
         m.Height = m_nChromaHeight;
         CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
     }
@@ -442,10 +430,8 @@ NvDecoder::~NvDecoder() {
         cuvidDestroyDecoder(m_hDecoder);
     }
 
-    for (uint8_t *pFrame : m_vpFrame)
-    {
-        delete[] pFrame;
-    }
+    delete dstFrame;
+
     cuCtxPopCurrent(NULL);
 
     cuvidCtxLockDestroy(m_ctxLock);
@@ -453,8 +439,6 @@ NvDecoder::~NvDecoder() {
 
 int NvDecoder::Decode(const uint8_t *pData, size_t nSize)
 {
-    m_nDecodedFrame = 0;
-    m_nDecodedFrameReturned = 0;
     CUVIDSOURCEDATAPACKET packet = { 0 };
     packet.payload = pData;
     packet.payload_size = nSize;
@@ -462,16 +446,11 @@ int NvDecoder::Decode(const uint8_t *pData, size_t nSize)
     packet.timestamp = 0;
     NVDEC_API_CALL(cuvidParseVideoData(m_hParser, &packet));
 
-    return m_nDecodedFrame;
+    return 1;
 }
 
 uint8_t* NvDecoder::GetFrame()
 {
-    if (m_nDecodedFrame > 0)
-    {
-        m_nDecodedFrame--;
-        return m_vpFrame[m_nDecodedFrameReturned++];
-    }
-
-    return NULL;
+    return dstFrame;
 }
+
