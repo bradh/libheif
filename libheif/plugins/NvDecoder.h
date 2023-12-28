@@ -41,11 +41,6 @@
 
 #define MAX_FRM_CNT 32
 
-typedef enum{
-    SEI_TYPE_TIME_CODE = 136,
-    SEI_TYPE_USER_DATA_UNREGISTERED = 5
-}SEI_H264_HEVC_PAYLOAD_TYPE;
-
 /**
 * @brief Exception class for error reporting from the decode API.
 */
