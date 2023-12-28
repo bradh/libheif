@@ -113,9 +113,7 @@ public:
     *  Application must call this function to initialize the decoder, before
     *  starting to decode any frames.
     */
-    NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency = false,
-              unsigned int clkRate = 1000,
-              bool force_zero_latency = false);
+    NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, unsigned int clkRate = 1000, bool force_zero_latency = false);
     ~NvDecoder();
 
     /**
