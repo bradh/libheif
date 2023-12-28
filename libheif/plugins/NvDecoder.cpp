@@ -137,15 +137,6 @@ static int GetChromaPlaneCount(cudaVideoSurfaceFormat eSurfaceFormat)
     return numPlane;
 }
 
-std::map<int, int64_t> NvDecoder::sessionOverHead = { {0,0}, {1,0} };
-
-/**
-*   @brief  This function is used to get codec string from codec id
-*/
-const char *NvDecoder::GetCodecString(cudaVideoCodec eCodec)
-{
-    return GetVideoCodecString(eCodec);
-}
 
 /* Called when the parser encounters sequence header for AV1 SVC content
 *  return value interpretation:
@@ -432,8 +423,6 @@ NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec) :
     NVDEC_API_CALL(cuvidCtxLockCreate(&m_ctxLock, cuContext));
 
     ck(cuStreamCreate(&m_cuvidStream, CU_STREAM_DEFAULT));
-
-    decoderSessionID = 0;
 
     CUVIDPARSERPARAMS videoParserParameters = {};
     videoParserParameters.CodecType = eCodec;
