@@ -154,11 +154,6 @@ public:
     int GetBPP() { assert(m_nWidth); return m_nBPP; }
 
     /**
-    *   @brief  This function is used to get the YUV chroma format
-    */
-    cudaVideoSurfaceFormat GetOutputFormat() { return m_eOutputFormat; }
-
-    /**
     *   @brief  This function is used to get information about the video stream (codec, display parameters etc)
     */
     CUVIDEOFORMAT GetVideoFormatInfo() { assert(m_nWidth); return m_videoFormat; }
