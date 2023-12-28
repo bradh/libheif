@@ -154,11 +154,6 @@ public:
     int GetBPP() { assert(m_nWidth); return m_nBPP; }
 
     /**
-    *   @brief  This function is used to get information about the video stream (codec, display parameters etc)
-    */
-    CUVIDEOFORMAT GetVideoFormatInfo() { assert(m_nWidth); return m_videoFormat; }
-
-    /**
     *   @brief  This function decodes a frame and returns the number of frames that are available for
     *   display. All frames that are available for display should be read before making a subsequent decode call.
     *   @param  pData - pointer to the data buffer that is to be decoded
