@@ -204,10 +204,10 @@ public:
     int Decode(const uint8_t *pData, int nSize, int nFlags = 0, int64_t nTimestamp = 0);
 
     /**
-    *   @brief  This function returns a decoded frame and timestamp. This function should be called in a loop for
+    *   @brief  This function returns a decoded frame. This function should be called in a loop for
     *   fetching all the frames that are available for display.
     */
-    uint8_t* GetFrame(int64_t* pTimestamp = nullptr);
+    uint8_t* GetFrame();
 
 
     /**
@@ -216,7 +216,7 @@ public:
     *   getting overwritten, even if subsequent decode calls are made. The frame buffers
     *   remain locked, until UnlockFrame() is called
     */
-    uint8_t* GetLockedFrame(int64_t* pTimestamp = nullptr);
+    uint8_t* GetLockedFrame();
 
     /**
     *   @brief  This function unlocks the frame buffer and makes the frame buffers available for write again
@@ -313,8 +313,6 @@ private:
     Rect m_displayRect = {};
     // stock of frames
     std::vector<uint8_t *> m_vpFrame;
-    // timestamps of decoded frames
-    std::vector<int64_t> m_vTimestamp;
     int m_nDecodedFrame = 0, m_nDecodedFrameReturned = 0;
     int m_nDecodePicCnt = 0, m_nPicNumInDecodeOrder[MAX_FRM_CNT];
     bool m_bEndDecodeDone = false;
