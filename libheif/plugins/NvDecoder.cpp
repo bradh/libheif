@@ -234,12 +234,6 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
         return nDecodeSurface;
     }
 
-    if (m_nWidth && m_nLumaHeight && m_nChromaHeight) {
-
-        // cuvidCreateDecoder() has been called before, and now there's possible config change
-        return ReconfigureDecoder(pVideoFormat);
-    }
-
     // eCodec has been set in the constructor (for parser). Here it's set again for potential correction
     m_eCodec = pVideoFormat->codec;
     m_eChromaFormat = pVideoFormat->chroma_format;
@@ -286,23 +280,24 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     videoDecodeCreateInfo.vidLock = m_ctxLock;
     videoDecodeCreateInfo.ulWidth = pVideoFormat->coded_width;
     videoDecodeCreateInfo.ulHeight = pVideoFormat->coded_height;
+
+    unsigned int maxHeight = 0;
+    unsigned int maxWidth = 0;
     // AV1 has max width/height of sequence in sequence header
     if (pVideoFormat->codec == cudaVideoCodec_AV1 && pVideoFormat->seqhdr_data_length > 0)
     {
-        // dont overwrite if it is already set from cmdline or reconfig.txt
-        if (!(m_nMaxWidth > pVideoFormat->coded_width || m_nMaxHeight > pVideoFormat->coded_height))
-        {
-            CUVIDEOFORMATEX *vidFormatEx = (CUVIDEOFORMATEX *)pVideoFormat;
-            m_nMaxWidth = vidFormatEx->av1.max_width;
-            m_nMaxHeight = vidFormatEx->av1.max_height;
-        }
+        CUVIDEOFORMATEX *vidFormatEx = (CUVIDEOFORMATEX *)pVideoFormat;
+        maxWidth = vidFormatEx->av1.max_width;
+        maxHeight = vidFormatEx->av1.max_height;
     }
-    if (m_nMaxWidth < pVideoFormat->coded_width)
-        m_nMaxWidth = pVideoFormat->coded_width;
-    if (m_nMaxHeight < pVideoFormat->coded_height)
-        m_nMaxHeight = pVideoFormat->coded_height;
-    videoDecodeCreateInfo.ulMaxWidth = m_nMaxWidth;
-    videoDecodeCreateInfo.ulMaxHeight = m_nMaxHeight;
+    if (maxWidth < pVideoFormat->coded_width) {
+        maxWidth = pVideoFormat->coded_width;
+    }
+    if (maxHeight < pVideoFormat->coded_height) {
+        maxHeight = pVideoFormat->coded_height;
+    }
+    videoDecodeCreateInfo.ulMaxWidth = maxWidth;
+    videoDecodeCreateInfo.ulMaxHeight = maxHeight;
 
     m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
     m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
@@ -333,108 +328,6 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     return nDecodeSurface;
 }
 
-int NvDecoder::ReconfigureDecoder(CUVIDEOFORMAT *pVideoFormat)
-{
-    if (pVideoFormat->bit_depth_luma_minus8 != m_videoFormat.bit_depth_luma_minus8 || pVideoFormat->bit_depth_chroma_minus8 != m_videoFormat.bit_depth_chroma_minus8){
-
-        NVDEC_THROW_ERROR("Reconfigure Not supported for bit depth change", CUDA_ERROR_NOT_SUPPORTED);
-    }
-
-    if (pVideoFormat->chroma_format != m_videoFormat.chroma_format) {
-
-        NVDEC_THROW_ERROR("Reconfigure Not supported for chroma format change", CUDA_ERROR_NOT_SUPPORTED);
-    }
-
-    bool bDecodeResChange = !(pVideoFormat->coded_width == m_videoFormat.coded_width && pVideoFormat->coded_height == m_videoFormat.coded_height);
-    bool bDisplayRectChange = !(pVideoFormat->display_area.bottom == m_videoFormat.display_area.bottom && pVideoFormat->display_area.top == m_videoFormat.display_area.top \
-        && pVideoFormat->display_area.left == m_videoFormat.display_area.left && pVideoFormat->display_area.right == m_videoFormat.display_area.right);
-
-    int nDecodeSurface = pVideoFormat->min_num_decode_surfaces;
-
-    if ((pVideoFormat->coded_width > m_nMaxWidth) || (pVideoFormat->coded_height > m_nMaxHeight)) {
-        // For VP9, let driver  handle the change if new width/height > maxwidth/maxheight
-        if ((m_eCodec != cudaVideoCodec_VP9) || m_bReconfigExternal)
-        {
-            NVDEC_THROW_ERROR("Reconfigure Not supported when width/height > maxwidth/maxheight", CUDA_ERROR_NOT_SUPPORTED);
-        }
-        return 1;
-    }
-
-    if (!bDecodeResChange && !m_bReconfigExtPPChange) {
-        // if the coded_width/coded_height hasn't changed but display resolution has changed, then need to update width/height for
-        // correct output without cropping. Example : 1920x1080 vs 1920x1088
-        if (bDisplayRectChange)
-        {
-            m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
-            m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
-            m_nChromaHeight = (int)ceil((float)m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat));
-            m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
-        }
-
-        // no need for reconfigureDecoder(). Just return
-        return 1;
-    }
-
-    CUVIDRECONFIGUREDECODERINFO reconfigParams = { 0 };
-
-    reconfigParams.ulWidth = m_videoFormat.coded_width = pVideoFormat->coded_width;
-    reconfigParams.ulHeight = m_videoFormat.coded_height = pVideoFormat->coded_height;
-
-    // Dont change display rect and get scaled output from decoder. This will help display app to present apps smoothly
-    reconfigParams.display_area.bottom = (short int) m_displayRect.b;
-    reconfigParams.display_area.top = (short int) m_displayRect.t;
-    reconfigParams.display_area.left = (short int) m_displayRect.l;
-    reconfigParams.display_area.right = (short int) m_displayRect.r;
-    reconfigParams.ulTargetWidth = m_nSurfaceWidth;
-    reconfigParams.ulTargetHeight = m_nSurfaceHeight;
-
-    // If external reconfigure is called along with resolution change even if post processing params is not changed,
-    // do full reconfigure params update
-    if ((m_bReconfigExternal && bDecodeResChange) || m_bReconfigExtPPChange) {
-        // update display rect and target resolution if requested explicitely
-        m_bReconfigExternal = false;
-        m_bReconfigExtPPChange = false;
-        m_videoFormat = *pVideoFormat;
-        m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
-        m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
-        reconfigParams.ulTargetWidth = pVideoFormat->coded_width;
-        reconfigParams.ulTargetHeight = pVideoFormat->coded_height;
-
-        m_nChromaHeight = (int)ceil((float)m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat));
-        m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
-        m_nSurfaceHeight = reconfigParams.ulTargetHeight;
-        m_nSurfaceWidth = reconfigParams.ulTargetWidth;
-        m_displayRect.b = reconfigParams.display_area.bottom;
-        m_displayRect.t = reconfigParams.display_area.top;
-        m_displayRect.l = reconfigParams.display_area.left;
-        m_displayRect.r = reconfigParams.display_area.right;
-    }
-
-    reconfigParams.ulNumDecodeSurfaces = nDecodeSurface;
-
-    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
-    NVDEC_API_CALL(cuvidReconfigureDecoder(m_hDecoder, &reconfigParams));
-    CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
-
-    return nDecodeSurface;
-}
-
-int NvDecoder::setReconfigParams(const Rect *pCropRect, const Dim *pResizeDim)
-{
-    m_bReconfigExternal = true;
-    m_bReconfigExtPPChange = false;
-
-    // Clear existing output buffers of different size
-    uint8_t *pFrame = NULL;
-    while (!m_vpFrame.empty())
-    {
-        pFrame = m_vpFrame.back();
-        m_vpFrame.pop_back();
-        delete pFrame;
-    }
-
-    return 1;
-}
 
 /* Return value from HandlePictureDecode() are interpreted as:
 *  0: fail, >=1: succeeded
@@ -539,9 +432,9 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 }
 
 NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency, 
-    int maxWidth, int maxHeight, unsigned int clkRate, bool force_zero_latency) :
+    unsigned int clkRate, bool force_zero_latency) :
     m_cuContext(cuContext), m_eCodec(eCodec),
-    m_nMaxWidth (maxWidth), m_nMaxHeight(maxHeight), m_bForce_zero_latency(force_zero_latency)
+    m_bForce_zero_latency(force_zero_latency)
 {
     NVDEC_API_CALL(cuvidCtxLockCreate(&m_ctxLock, cuContext));
 
