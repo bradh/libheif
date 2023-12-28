@@ -251,7 +251,7 @@ private:
     // stock of frames
     std::vector<uint8_t *> m_vpFrame;
     int m_nDecodedFrame = 0, m_nDecodedFrameReturned = 0;
-    int m_nDecodePicCnt = 0, m_nPicNumInDecodeOrder[MAX_FRM_CNT];
+    int m_nDecodePicCnt = 0;
     bool m_bEndDecodeDone = false;
     int m_nFrameAlloc = 0;
     CUstream m_cuvidStream = 0;

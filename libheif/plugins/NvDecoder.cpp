@@ -325,7 +325,6 @@ int NvDecoder::HandlePictureDecode(CUVIDPICPARAMS *pPicParams) {
         NVDEC_THROW_ERROR("Decoder not initialized.", CUDA_ERROR_NOT_INITIALIZED);
         return false;
     }
-    m_nPicNumInDecodeOrder[pPicParams->CurrPicIdx] = m_nDecodePicCnt++;
     CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
     NVDEC_API_CALL(cuvidDecodePicture(m_hDecoder, pPicParams));
     if ((!pPicParams->field_pic_flag) || (pPicParams->second_field))
@@ -363,7 +362,7 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     CUresult result = cuvidGetDecodeStatus(m_hDecoder, pDispInfo->picture_index, &DecodeStatus);
     if (result == CUDA_SUCCESS && (DecodeStatus.decodeStatus == cuvidDecodeStatus_Error || DecodeStatus.decodeStatus == cuvidDecodeStatus_Error_Concealed))
     {
-        printf("Decode Error occurred for picture %d\n", m_nPicNumInDecodeOrder[pDispInfo->picture_index]);
+        printf("Decode Error occurred for picture.\n");
     }
 
     uint8_t *pDecodedFrame = nullptr;
