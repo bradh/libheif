@@ -198,9 +198,8 @@ public:
     *   display. All frames that are available for display should be read before making a subsequent decode call.
     *   @param  pData - pointer to the data buffer that is to be decoded
     *   @param  nSize - size of the data buffer in bytes
-    *   @param  nFlags - CUvideopacketflags for setting decode options
     */
-    int Decode(const uint8_t *pData, int nSize, int nFlags = 0);
+    int Decode(const uint8_t *pData, int nSize);
 
     /**
     *   @brief  This function returns a decoded frame. This function should be called in a loop for
