@@ -372,7 +372,6 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 
     uint8_t *pDecodedFrame = nullptr;
     {
-        std::lock_guard<std::mutex> lock(m_mtxVPFrame);
         if ((unsigned)++m_nDecodedFrame > m_vpFrame.size())
         {
             // Not enough frames in stock
@@ -448,8 +447,6 @@ NvDecoder::~NvDecoder() {
         cuvidDestroyDecoder(m_hDecoder);
     }
 
-    std::lock_guard<std::mutex> lock(m_mtxVPFrame);
-
     for (uint8_t *pFrame : m_vpFrame)
     {
         delete[] pFrame;
@@ -477,30 +474,9 @@ uint8_t* NvDecoder::GetFrame()
 {
     if (m_nDecodedFrame > 0)
     {
-        std::lock_guard<std::mutex> lock(m_mtxVPFrame);
         m_nDecodedFrame--;
         return m_vpFrame[m_nDecodedFrameReturned++];
     }
 
     return NULL;
-}
-
-uint8_t* NvDecoder::GetLockedFrame()
-{
-    uint8_t *pFrame;
-    if (m_nDecodedFrame > 0) {
-        std::lock_guard<std::mutex> lock(m_mtxVPFrame);
-        m_nDecodedFrame--;
-        pFrame = m_vpFrame[0];
-        m_vpFrame.erase(m_vpFrame.begin(), m_vpFrame.begin() + 1);
-        return pFrame;
-    }
-
-    return NULL;
-}
-
-void NvDecoder::UnlockFrame(uint8_t **pFrame)
-{
-    std::lock_guard<std::mutex> lock(m_mtxVPFrame);
-    m_vpFrame.insert(m_vpFrame.end(), &pFrame[0], &pFrame[1]);
 }
