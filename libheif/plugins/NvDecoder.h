@@ -117,11 +117,6 @@ public:
     ~NvDecoder();
 
     /**
-    *  @brief  This function is used to get the current CUDA context.
-    */
-    CUcontext GetContext() { return m_cuContext; }
-
-    /**
     *  @brief  This function is used to get the output frame width.
     *  NV12/P016 output format width is 2 byte aligned because of U and V interleave
     */
@@ -184,11 +179,6 @@ public:
     CUVIDEOFORMAT GetVideoFormatInfo() { assert(m_nWidth); return m_videoFormat; }
 
     /**
-    *   @brief  This function is used to get codec string from codec id
-    */
-    const char *GetCodecString(cudaVideoCodec eCodec);
-
-    /**
     *   @brief  This function is used to print information about the video stream
     */
     std::string GetVideoInfo() const { return m_videoInfo.str(); }
@@ -224,29 +214,13 @@ public:
     void UnlockFrame(uint8_t **pFrame);
 
     /**
-    *   @brief  This function allows app to set decoder reconfig params
-    *   @param  pCropRect - cropping rectangle coordinates
-    *   @param  pResizeDim - width and height of resized output
-    */
-    int setReconfigParams(const Rect * pCropRect, const Dim * pResizeDim);
-
-    /**
     *   @brief  This function allows app to set operating point for AV1 SVC clips
     *   @param  opPoint - operating point of an AV1 scalable bitstream
     *   @param  bDispAllLayers - Output all decoded frames of an AV1 scalable bitstream
     */
     void SetOperatingPoint(const uint32_t opPoint, const bool bDispAllLayers) { m_nOperatingPoint = opPoint; m_bDispAllLayers = bDispAllLayers; }
 
-    void setDecoderSessionID(int sessionID) { decoderSessionID = sessionID; }
-    int getDecoderSessionID() { return decoderSessionID; }
-
-    // Session overhead refers to decoder initialization and deinitialization time
-    static void addDecoderSessionOverHead(int sessionID, int64_t duration) { sessionOverHead[sessionID] += duration; }
-    static int64_t getDecoderSessionOverHead(int sessionID) { return sessionOverHead[sessionID]; }
-
 private:
-    int decoderSessionID; // Decoder session identifier. Used to gather session level stats.
-    static std::map<int, int64_t> sessionOverHead; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
 
     /**
     *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
