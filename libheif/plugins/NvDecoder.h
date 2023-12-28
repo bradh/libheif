@@ -248,7 +248,6 @@ private:
     int m_nBPP = 1;
     CUVIDEOFORMAT m_videoFormat = {};
     uint8_t * dstFrame;
-    bool m_bEndDecodeDone = false;
     CUstream m_cuvidStream = 0;
 
     std::ostringstream m_videoInfo;
