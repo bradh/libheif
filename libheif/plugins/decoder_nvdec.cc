@@ -45,19 +45,6 @@ static const int NVDEC_PLUGIN_PRIORITY = 120;
 
 static char plugin_name[MAX_PLUGIN_NAME_LENGTH];
 
-void ConvertSemiplanarToPlanar(uint8_t *pHostFrame, int nWidth, int nHeight, int nBitDepth) {
-    if (nBitDepth == 8) {
-        // nv12->iyuv
-        YuvConverter<uint8_t> converter8(nWidth, nHeight);
-        converter8.UVInterleavedToPlanar(pHostFrame);
-    } else {
-        // p016->yuv420p16
-        YuvConverter<uint16_t> converter16(nWidth, nHeight);
-        converter16.UVInterleavedToPlanar((uint16_t *)pHostFrame);
-    }
-}
-
-
 static const char *nvdec_plugin_name()
 {
     snprintf(plugin_name, MAX_PLUGIN_NAME_LENGTH, "NVIDIA Video Decoder SDK (Hardware)");
@@ -220,9 +207,6 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
     int nFrameReturned = dec.Decode(hevc_data, hevc_data_size);
     if (nFrameReturned > 0) {
         uint8_t *pFrame = dec.GetFrame();
-
-        // convert result to heif pixel image
-        ConvertSemiplanarToPlanar(pFrame, dec.GetWidth(), dec.GetHeight(), dec.GetBitDepth());
 
         struct heif_image *heif_img = nullptr;
         // dummy entry for chroma

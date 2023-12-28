@@ -91,7 +91,6 @@ set(FFMPEG_DECODER_sources decoder_ffmpeg.cc decoder_ffmpeg.h nalu.cc nalu.h)
 set(FFMPEG_DECODER_extra_plugin_sources ../error.cc)
 plugin_compilation(ffmpegdec FFMPEG FFMPEG_FOUND FFMPEG_DECODER FFMPEG_DECODER)
 
-
 set(OPENJPH_ENCODER_sources encoder_openjph.cc encoder_openjph.h)
 set(OPENJPH_ENCODER_extra_plugin_sources)
 plugin_compilation(jphenc OPENJPH OPENJPH_FOUND OPENJPH_ENCODER OPENJPH_ENCODER)
@@ -109,6 +108,7 @@ set(VVENC_extra_plugin_sources)
 plugin_compilation(vvenc vvenc vvenc_FOUND VVENC VVENC)
 
 set(NV_DECODER_sources decoder_nvdec.cc decoder_nvdec.h nalu.cc nalu.h NvDecoder.cpp NvDecoder.h NvCodecUtils.h)
+set(NV_DECODER_sources decoder_nvdec.cc decoder_nvdec.h nalu.cc nalu.h NvDecoder.cpp NvDecoder.h)
 set(NV_DECODER_extra_plugin_sources)
 plugin_compilation(nvdec NVDEC NVDEC_FOUND NV_DECODER NV_DECODER)
 
