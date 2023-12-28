@@ -199,9 +199,8 @@ public:
     *   @param  pData - pointer to the data buffer that is to be decoded
     *   @param  nSize - size of the data buffer in bytes
     *   @param  nFlags - CUvideopacketflags for setting decode options
-    *   @param  nTimestamp - presentation timestamp
     */
-    int Decode(const uint8_t *pData, int nSize, int nFlags = 0, int64_t nTimestamp = 0);
+    int Decode(const uint8_t *pData, int nSize, int nFlags = 0);
 
     /**
     *   @brief  This function returns a decoded frame. This function should be called in a loop for

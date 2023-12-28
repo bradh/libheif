@@ -470,15 +470,15 @@ NvDecoder::~NvDecoder() {
     cuvidCtxLockDestroy(m_ctxLock);
 }
 
-int NvDecoder::Decode(const uint8_t *pData, int nSize, int nFlags, int64_t nTimestamp)
+int NvDecoder::Decode(const uint8_t *pData, int nSize, int nFlags)
 {
     m_nDecodedFrame = 0;
     m_nDecodedFrameReturned = 0;
     CUVIDSOURCEDATAPACKET packet = { 0 };
     packet.payload = pData;
     packet.payload_size = nSize;
-    packet.flags = nFlags | CUVID_PKT_TIMESTAMP;
-    packet.timestamp = nTimestamp;
+    packet.flags = nFlags;
+    packet.timestamp = 0;
     if (!pData || nSize == 0) {
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
     }
