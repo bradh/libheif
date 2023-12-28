@@ -113,7 +113,7 @@ public:
     *  Application must call this function to initialize the decoder, before
     *  starting to decode any frames.
     */
-    NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, unsigned int clkRate = 1000, bool force_zero_latency = false);
+    NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec);
     ~NvDecoder();
 
     /**
@@ -259,11 +259,6 @@ private:
     static int CUDAAPI HandlePictureDecodeProc(void *pUserData, CUVIDPICPARAMS *pPicParams) { return ((NvDecoder *)pUserData)->HandlePictureDecode(pPicParams); }
 
     /**
-    *   @brief  Callback function to be registered for getting a callback when a decoded frame is available for display
-    */
-    static int CUDAAPI HandlePictureDisplayProc(void *pUserData, CUVIDPARSERDISPINFO *pDispInfo) { return ((NvDecoder *)pUserData)->HandlePictureDisplay(pDispInfo); }
-
-    /**
     *   @brief  Callback function to be registered for getting a callback to get operating point when AV1 SVC sequence header start.
     */
     static int CUDAAPI HandleOperatingPointProc(void *pUserData, CUVIDOPERATINGPOINTINFO *pOPInfo) { return ((NvDecoder *)pUserData)->GetOperatingPoint(pOPInfo); }
@@ -322,10 +317,4 @@ private:
 
     unsigned int m_nOperatingPoint = 0;
     bool  m_bDispAllLayers = false;
-    // In H.264, there is an inherent display latency for video contents
-    // which do not have num_reorder_frames=0 in the VUI. This applies to
-    // All-Intra and IPPP sequences as well. If the user wants zero display
-    // latency for All-Intra and IPPP sequences, the below flag will enable
-    // the display callback immediately after the decode callback.
-    bool m_bForce_zero_latency = false;
 };
