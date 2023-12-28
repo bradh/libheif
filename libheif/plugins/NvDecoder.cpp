@@ -299,10 +299,6 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
     m_nSurfaceHeight = (int) videoDecodeCreateInfo.ulTargetHeight;
     m_nSurfaceWidth = (int) videoDecodeCreateInfo.ulTargetWidth;
-    m_displayRect.b = videoDecodeCreateInfo.display_area.bottom;
-    m_displayRect.t = videoDecodeCreateInfo.display_area.top;
-    m_displayRect.l = videoDecodeCreateInfo.display_area.left;
-    m_displayRect.r = videoDecodeCreateInfo.display_area.right;
 
     m_videoInfo << "Video Decoding Params:" << std::endl
         << "\tNum Surfaces : " << videoDecodeCreateInfo.ulNumDecodeSurfaces << std::endl
