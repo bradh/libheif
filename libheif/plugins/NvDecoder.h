@@ -197,22 +197,6 @@ public:
     */
     uint8_t* GetFrame();
 
-
-    /**
-    *   @brief  This function decodes a frame and returns the locked frame buffers
-    *   This makes the buffers available for use by the application without the buffers
-    *   getting overwritten, even if subsequent decode calls are made. The frame buffers
-    *   remain locked, until UnlockFrame() is called
-    */
-    uint8_t* GetLockedFrame();
-
-    /**
-    *   @brief  This function unlocks the frame buffer and makes the frame buffers available for write again
-    *   @param  ppFrame - pointer to array of frames that are to be unlocked	
-    *   @param  nFrame - number of frames to be unlocked
-    */
-    void UnlockFrame(uint8_t **pFrame);
-
     /**
     *   @brief  This function allows app to set operating point for AV1 SVC clips
     *   @param  opPoint - operating point of an AV1 scalable bitstream
@@ -283,7 +267,6 @@ private:
     int m_nDecodedFrame = 0, m_nDecodedFrameReturned = 0;
     int m_nDecodePicCnt = 0, m_nPicNumInDecodeOrder[MAX_FRM_CNT];
     bool m_bEndDecodeDone = false;
-    std::mutex m_mtxVPFrame;
     int m_nFrameAlloc = 0;
     CUstream m_cuvidStream = 0;
 
