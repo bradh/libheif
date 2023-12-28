@@ -94,14 +94,6 @@ inline NVDECException NVDECException::makeNVDECException(const std::string& erro
         }                                                                                                          \
     } while (0)
 
-struct Rect {
-    int l, t, r, b;
-};
-
-struct Dim {
-    int w, h;
-};
-
 /**
 * @brief Base class for decoder interface.
 */
