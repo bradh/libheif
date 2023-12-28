@@ -507,7 +507,7 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     m.srcPitch = nSrcPitch;
     m.dstMemoryType = CU_MEMORYTYPE_HOST;
     m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame);
-    m.dstPitch = m_nDeviceFramePitch ? m_nDeviceFramePitch : GetWidth() * m_nBPP;
+    m.dstPitch = GetWidth() * m_nBPP;
     m.WidthInBytes = GetWidth() * m_nBPP;
     m.Height = m_nLumaHeight;
     CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
@@ -539,9 +539,8 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 }
 
 NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency, 
-    bool bDeviceFramePitched,
     int maxWidth, int maxHeight, unsigned int clkRate, bool force_zero_latency) :
-    m_cuContext(cuContext), m_eCodec(eCodec), m_bDeviceFramePitched(bDeviceFramePitched),
+    m_cuContext(cuContext), m_eCodec(eCodec),
     m_nMaxWidth (maxWidth), m_nMaxHeight(maxHeight), m_bForce_zero_latency(force_zero_latency)
 {
     NVDEC_API_CALL(cuvidCtxLockCreate(&m_ctxLock, cuContext));

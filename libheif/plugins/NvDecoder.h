@@ -114,7 +114,6 @@ public:
     *  starting to decode any frames.
     */
     NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency = false,
-              bool bDeviceFramePitched = false,
               int maxWidth = 0, int maxHeight = 0, unsigned int clkRate = 1000,
               bool force_zero_latency = false);
     ~NvDecoder();
@@ -165,11 +164,6 @@ public:
     *   @brief  This function is used to get the current frame chroma plane size.
     */
     int GetChromaPlaneSize() { assert(m_nWidth); return GetWidth() *  (m_nChromaHeight * m_nNumChromaPlanes) * m_nBPP; }
-
-    /**
-    *  @brief  This function is used to get the pitch of the device buffer holding the decoded frame.
-    */
-    int GetDeviceFramePitch() { assert(m_nWidth); return m_nDeviceFramePitch ? (int)m_nDeviceFramePitch : GetWidth() * m_nBPP; }
 
     /**
     *   @brief  This function is used to get the bit depth associated with the pixel format.
@@ -334,8 +328,6 @@ private:
     std::mutex m_mtxVPFrame;
     int m_nFrameAlloc = 0;
     CUstream m_cuvidStream = 0;
-    bool m_bDeviceFramePitched = false;
-    size_t m_nDeviceFramePitch = 0;
 
     std::ostringstream m_videoInfo;
     unsigned int m_nMaxWidth = 0, m_nMaxHeight = 0;
