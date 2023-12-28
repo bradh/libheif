@@ -39,8 +39,6 @@
 #include "NvCodecUtils.h"
 #include <map>
 
-#define MAX_FRM_CNT 32
-
 /**
 * @brief Exception class for error reporting from the decode API.
 */
