@@ -131,27 +131,27 @@ public:
     /**
     *   @brief  This function is used to get the current frame size based on pixel format.
     */
-    int GetFrameSize() { assert(m_nWidth); return GetWidth() * (m_nLumaHeight + (m_nChromaHeight * m_nNumChromaPlanes)) * m_nBPP; }
+    int GetFrameSize() { return GetWidth() * (m_nLumaHeight + (m_nChromaHeight * m_nNumChromaPlanes)) * m_nBPP; }
 
     /**
     *   @brief  This function is used to get the current frame Luma plane size.
     */
-    int GetLumaPlaneSize() { assert(m_nWidth); return GetWidth() * m_nLumaHeight * m_nBPP; }
+    int GetLumaPlaneSize() { return GetWidth() * m_nLumaHeight * m_nBPP; }
 
     /**
     *   @brief  This function is used to get the current frame chroma plane size.
     */
-    int GetChromaPlaneSize() { assert(m_nWidth); return GetWidth() *  (m_nChromaHeight * m_nNumChromaPlanes) * m_nBPP; }
+    int GetChromaPlaneSize() { return GetWidth() *  (m_nChromaHeight * m_nNumChromaPlanes) * m_nBPP; }
 
     /**
     *   @brief  This function is used to get the bit depth associated with the pixel format.
     */
-    int GetBitDepth() { assert(m_nWidth); return m_nBitDepthMinus8 + 8; }
+    int GetBitDepth() { return m_nBitDepthMinus8 + 8; }
 
     /**
     *   @brief  This function is used to get the bytes used per pixel.
     */
-    int GetBPP() { assert(m_nWidth); return m_nBPP; }
+    int GetBPP() { return m_nBPP; }
 
     /**
     *   @brief  This function decodes a frame and returns the number of frames that are available for
