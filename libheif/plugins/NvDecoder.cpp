@@ -431,10 +431,8 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     return 1;
 }
 
-NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatency, 
-    unsigned int clkRate, bool force_zero_latency) :
-    m_cuContext(cuContext), m_eCodec(eCodec),
-    m_bForce_zero_latency(force_zero_latency)
+NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, unsigned int clkRate, bool force_zero_latency) :
+    m_cuContext(cuContext), m_eCodec(eCodec), m_bForce_zero_latency(force_zero_latency)
 {
     NVDEC_API_CALL(cuvidCtxLockCreate(&m_ctxLock, cuContext));
 
@@ -446,7 +444,7 @@ NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec, bool bLowLatenc
     videoParserParameters.CodecType = eCodec;
     videoParserParameters.ulMaxNumDecodeSurfaces = 1;
     videoParserParameters.ulClockRate = clkRate;
-    videoParserParameters.ulMaxDisplayDelay = bLowLatency ? 0 : 1;
+    videoParserParameters.ulMaxDisplayDelay = 0;
     videoParserParameters.pUserData = this;
     videoParserParameters.pfnSequenceCallback = HandleVideoSequenceProc;
     videoParserParameters.pfnDecodePicture = HandlePictureDecodeProc;
