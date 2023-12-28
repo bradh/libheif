@@ -25,13 +25,68 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+// for std::cout and friends
 #include <iostream>
-#include <algorithm>
-#include <chrono>
+
+// for ceil()
 #include <cmath>
 
-#include "nvcuvid.h"
+// for memset, memcpy
+#include <cstring>
+
+// TODO: remove this once we dump the errorLog
+#include <sstream>
+
 #include "NvDecoder.h"
+
+/**
+* @brief Exception class for error reporting from the decode API.
+*/
+class NVDECException : public std::exception
+{
+public:
+    NVDECException(const std::string& errorStr, const CUresult errorCode)
+        : m_errorString(errorStr), m_errorCode(errorCode) {}
+
+    virtual ~NVDECException() throw() {}
+    virtual const char* what() const throw() { return m_errorString.c_str(); }
+    CUresult  getErrorCode() const { return m_errorCode; }
+    const std::string& getErrorString() const { return m_errorString; }
+    static NVDECException makeNVDECException(const std::string& errorStr, const CUresult errorCode,
+        const std::string& functionName, const std::string& fileName, int lineNo);
+private:
+    std::string m_errorString;
+    CUresult m_errorCode;
+};
+
+inline NVDECException NVDECException::makeNVDECException(const std::string& errorStr, const CUresult errorCode, const std::string& functionName,
+    const std::string& fileName, int lineNo)
+{
+    std::ostringstream errorLog;
+    errorLog << functionName << " : " << errorStr << " at " << fileName << ":" << lineNo << std::endl;
+    NVDECException exception(errorLog.str(), errorCode);
+    return exception;
+}
+
+#define NVDEC_THROW_ERROR( errorStr, errorCode )                                                         \
+    do                                                                                                   \
+    {                                                                                                    \
+        throw NVDECException::makeNVDECException(errorStr, errorCode, __FUNCTION__, __FILE__, __LINE__); \
+    } while (0)
+
+
+#define NVDEC_API_CALL( cuvidAPI )                                                                                 \
+    do                                                                                                             \
+    {                                                                                                              \
+        CUresult errorCode = cuvidAPI;                                                                             \
+        if( errorCode != CUDA_SUCCESS)                                                                             \
+        {                                                                                                          \
+            std::ostringstream errorLog;                                                                           \
+            errorLog << #cuvidAPI << " returned error " << errorCode;                                              \
+            throw NVDECException::makeNVDECException(errorLog.str(), errorCode, __FUNCTION__, __FILE__, __LINE__); \
+        }                                                                                                          \
+    } while (0)
+
 
 #define CUDA_DRVAPI_CALL( call )                                                                                                 \
     do                                                                                                                           \
