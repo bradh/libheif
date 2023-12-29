@@ -184,7 +184,6 @@ private:
     cudaVideoSurfaceFormat m_eOutputFormat = cudaVideoSurfaceFormat_NV12;
     int m_nBitDepthMinus8 = 0;
     int m_nBPP = 1;
-    CUVIDEOFORMAT m_videoFormat = {};
     uint8_t * dstFrame;
 
     unsigned int m_nOperatingPoint = 0;
