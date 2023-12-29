@@ -196,6 +196,15 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
     // TODO: we don't want to hard code this
     ctx->eCodec = cudaVideoCodec_HEVC;
     ctx->cuContext = cuContext;
+    result = cuvidCtxLockCreate(&(ctx->ctxLock), ctx->cuContext);
+    if (result != CUDA_SUCCESS) {
+        cuCtxDestroy(cuContext);
+        struct heif_error err = {heif_error_Decoder_plugin_error,
+                                 heif_suberror_Plugin_loading_error,
+                                 "could not create CUDA context lock"};
+        return err;
+    }
+
     NvDecoder dec(ctx);
     uint8_t *hevc_data;
     size_t hevc_data_size;

@@ -482,8 +482,6 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 
 NvDecoder::NvDecoder(nvdec_context * ctx) : m_ctx(ctx)
 {
-    NVDEC_API_CALL(cuvidCtxLockCreate(&(m_ctx->ctxLock), m_ctx->cuContext));
-
     ck(cuStreamCreate(&m_cuvidStream, CU_STREAM_DEFAULT));
 
     CUVIDPARSERPARAMS videoParserParameters = {};
