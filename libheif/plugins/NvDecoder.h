@@ -39,6 +39,7 @@ struct nvdec_context
     cudaVideoCodec eCodec = cudaVideoCodec_NumCodecs;
     CUcontext cuContext = NULL;
     CUvideoctxlock ctxLock;
+    CUstream cuvidStream = 0;
 };
 
 
@@ -183,7 +184,6 @@ private:
     int m_nBPP = 1;
     CUVIDEOFORMAT m_videoFormat = {};
     uint8_t * dstFrame;
-    CUstream m_cuvidStream = 0;
 
     unsigned int m_nOperatingPoint = 0;
     bool  m_bDispAllLayers = false;

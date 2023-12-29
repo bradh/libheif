@@ -173,6 +173,7 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
         return err;
     }
 
+    // TODO: we should remove this and just use the ctx instance directly
     CUcontext cuContext = NULL;
     CUdevice cuDevice = 0;
 
@@ -202,6 +203,19 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
         struct heif_error err = {heif_error_Decoder_plugin_error,
                                  heif_suberror_Plugin_loading_error,
                                  "could not create CUDA context lock"};
+        return err;
+    }
+    result = cuStreamCreate(&(ctx->cuvidStream), CU_STREAM_DEFAULT);
+    if (result != CUDA_SUCCESS) {
+        const char *szErrName = NULL;
+        cuGetErrorName(result, &szErrName);
+        std::ostringstream errMsg;
+        errMsg << "could not create CUDA stream " << szErrName;
+        struct heif_error err = {heif_error_Decoder_plugin_error,
+                                 heif_suberror_Plugin_loading_error,
+                                 errMsg.str().c_str()};
+        cuvidCtxLockDestroy(ctx->ctxLock);
+        cuCtxDestroy(cuContext);
         return err;
     }
 
