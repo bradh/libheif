@@ -429,7 +429,7 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     videoProcessingParameters.second_field = pDispInfo->repeat_first_field + 1;
     videoProcessingParameters.top_field_first = pDispInfo->top_field_first;
     videoProcessingParameters.unpaired_field = pDispInfo->repeat_first_field < 0;
-    videoProcessingParameters.output_stream = m_cuvidStream;
+    videoProcessingParameters.output_stream = m_ctx->cuvidStream;
 
     CUdeviceptr dpSrcFrame = 0;
     unsigned int nSrcPitch = 0;
@@ -457,23 +457,23 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     m.dstPitch = GetWidth() * m_nBPP;
     m.WidthInBytes = GetWidth() * m_nBPP;
     m.Height = m_nLumaHeight;
-    CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
+    CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_ctx->cuvidStream));
 
     // Copy chroma plane
     // NVDEC output has luma height aligned by 2. Adjust chroma offset by aligning height
     m.srcDevice = (CUdeviceptr)((uint8_t *)dpSrcFrame + m.srcPitch * ((m_nSurfaceHeight + 1) & ~1));
     m.dstDevice = (CUdeviceptr)(m.dstHost = dstFrame + m.dstPitch * m_nLumaHeight);
     m.Height = m_nChromaHeight;
-    CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
+    CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_ctx->cuvidStream));
 
     if (m_nNumChromaPlanes == 2)
     {
         m.srcDevice = (CUdeviceptr)((uint8_t *)dpSrcFrame + m.srcPitch * ((m_nSurfaceHeight + 1) & ~1) * 2);
         m.dstDevice = (CUdeviceptr)(m.dstHost = dstFrame + m.dstPitch * m_nLumaHeight * 2);
         m.Height = m_nChromaHeight;
-        CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
+        CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_ctx->cuvidStream));
     }
-    CUDA_DRVAPI_CALL(cuStreamSynchronize(m_cuvidStream));
+    CUDA_DRVAPI_CALL(cuStreamSynchronize(m_ctx->cuvidStream));
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
 
     NVDEC_API_CALL(cuvidUnmapVideoFrame(m_hDecoder, dpSrcFrame));
@@ -482,8 +482,6 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 
 NvDecoder::NvDecoder(nvdec_context * ctx) : m_ctx(ctx)
 {
-    ck(cuStreamCreate(&m_cuvidStream, CU_STREAM_DEFAULT));
-
     CUVIDPARSERPARAMS videoParserParameters = {};
     videoParserParameters.CodecType = m_ctx->eCodec;
     videoParserParameters.ulMaxNumDecodeSurfaces = 1;
