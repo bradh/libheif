@@ -37,6 +37,8 @@
 // TODO: remove this once we dump the errorLog
 #include <sstream>
 
+#include "libheif/heif_plugin.h"
+
 #include "NvDecoder.h"
 
 /**
@@ -390,7 +392,7 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     m_nSurfaceHeight = (int) videoDecodeCreateInfo.ulTargetHeight;
 
     CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
-    NVDEC_API_CALL(cuvidCreateDecoder(&m_hDecoder, &videoDecodeCreateInfo));
+    NVDEC_API_CALL(cuvidCreateDecoder(&(m_ctx->hDecoder), &videoDecodeCreateInfo));
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
     return nDecodeSurface;
 }
@@ -400,13 +402,13 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
 *  0: fail, >=1: succeeded
 */
 int NvDecoder::HandlePictureDecode(CUVIDPICPARAMS *pPicParams) {
-    if (!m_hDecoder)
+    if (!(m_ctx->hDecoder))
     {
         NVDEC_THROW_ERROR("Decoder not initialized.", CUDA_ERROR_NOT_INITIALIZED);
         return false;
     }
     CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
-    NVDEC_API_CALL(cuvidDecodePicture(m_hDecoder, pPicParams));
+    NVDEC_API_CALL(cuvidDecodePicture(m_ctx->hDecoder, pPicParams));
     if ((!pPicParams->field_pic_flag) || (pPicParams->second_field))
     {
         CUVIDPARSERDISPINFO dispInfo;
@@ -434,12 +436,12 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     CUdeviceptr dpSrcFrame = 0;
     unsigned int nSrcPitch = 0;
     CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
-    NVDEC_API_CALL(cuvidMapVideoFrame(m_hDecoder, pDispInfo->picture_index, &dpSrcFrame,
+    NVDEC_API_CALL(cuvidMapVideoFrame(m_ctx->hDecoder, pDispInfo->picture_index, &dpSrcFrame,
         &nSrcPitch, &videoProcessingParameters));
 
     CUVIDGETDECODESTATUS DecodeStatus;
     memset(&DecodeStatus, 0, sizeof(DecodeStatus));
-    CUresult result = cuvidGetDecodeStatus(m_hDecoder, pDispInfo->picture_index, &DecodeStatus);
+    CUresult result = cuvidGetDecodeStatus(m_ctx->hDecoder, pDispInfo->picture_index, &DecodeStatus);
     if (result == CUDA_SUCCESS && (DecodeStatus.decodeStatus == cuvidDecodeStatus_Error || DecodeStatus.decodeStatus == cuvidDecodeStatus_Error_Concealed))
     {
         printf("Decode Error occurred for picture.\n");
@@ -476,34 +478,45 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     CUDA_DRVAPI_CALL(cuStreamSynchronize(m_ctx->cuvidStream));
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
 
-    NVDEC_API_CALL(cuvidUnmapVideoFrame(m_hDecoder, dpSrcFrame));
+    NVDEC_API_CALL(cuvidUnmapVideoFrame(m_ctx->hDecoder, dpSrcFrame));
     return 1;
 }
 
 NvDecoder::NvDecoder(nvdec_context * ctx) : m_ctx(ctx)
+{
+}
+
+heif_error NvDecoder::initVideoParser()
 {
     CUVIDPARSERPARAMS videoParserParameters = {};
     videoParserParameters.CodecType = m_ctx->eCodec;
     videoParserParameters.ulMaxNumDecodeSurfaces = 1;
     videoParserParameters.ulClockRate = 1000;
     videoParserParameters.ulMaxDisplayDelay = 0;
-    videoParserParameters.pUserData = this;
+    videoParserParameters.pUserData = this; // TODO: make this ctx once all the members are gone
     videoParserParameters.pfnSequenceCallback = HandleVideoSequenceProc;
     videoParserParameters.pfnDecodePicture = HandlePictureDecodeProc;
     videoParserParameters.pfnDisplayPicture = NULL;
     videoParserParameters.pfnGetOperatingPoint = HandleOperatingPointProc;
     videoParserParameters.pfnGetSEIMsg = NULL;
-    NVDEC_API_CALL(cuvidCreateVideoParser(&m_hParser, &videoParserParameters));
+    CUresult errorCode = cuvidCreateVideoParser(&(m_ctx->hParser), &videoParserParameters);
+    if (errorCode != CUDA_SUCCESS) {
+        struct heif_error err = {heif_error_Decoder_plugin_error,
+                                 heif_suberror_Plugin_loading_error,
+                                 "could not create CUVID video parser"};
+        return err;
+    }
+    return heif_error_ok;
 }
 
 NvDecoder::~NvDecoder() {
 
-    if (m_hParser) {
-        cuvidDestroyVideoParser(m_hParser);
+    if (m_ctx->hParser) {
+        cuvidDestroyVideoParser(m_ctx->hParser);
     }
     cuCtxPushCurrent(m_ctx->cuContext);
-    if (m_hDecoder) {
-        cuvidDestroyDecoder(m_hDecoder);
+    if (m_ctx->hDecoder) {
+        cuvidDestroyDecoder(m_ctx->hDecoder);
     }
 
     delete dstFrame;
@@ -520,7 +533,7 @@ int NvDecoder::Decode(const uint8_t *pData, size_t nSize)
     packet.payload_size = nSize;
     packet.flags = CUVID_PKT_ENDOFSTREAM;
     packet.timestamp = 0;
-    NVDEC_API_CALL(cuvidParseVideoData(m_hParser, &packet));
+    NVDEC_API_CALL(cuvidParseVideoData(m_ctx->hParser, &packet));
 
     return 1;
 }

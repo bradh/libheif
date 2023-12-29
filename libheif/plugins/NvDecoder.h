@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <cstdint>
 #include <vector>
+#include "libheif/heif.h"
 #include "nvcuvid.h"
 
 struct nvdec_context
@@ -40,6 +41,8 @@ struct nvdec_context
     CUcontext cuContext = NULL;
     CUvideoctxlock ctxLock;
     CUstream cuvidStream = 0;
+    CUvideoparser hParser = NULL;
+    CUvideodecoder hDecoder = NULL;
 };
 
 
@@ -130,6 +133,7 @@ public:
     */
     void SetOperatingPoint(const uint32_t opPoint, const bool bDispAllLayers) { m_nOperatingPoint = opPoint; m_bDispAllLayers = bDispAllLayers; }
 
+    heif_error initVideoParser();
 private:
 
     /**
@@ -171,8 +175,6 @@ private:
     int GetOperatingPoint(CUVIDOPERATINGPOINTINFO *pOPInfo);
 
 private:
-    CUvideoparser m_hParser = NULL;
-    CUvideodecoder m_hDecoder = NULL;
     // dimension of the output
     unsigned int m_nWidth = 0, m_nLumaHeight = 0, m_nChromaHeight = 0;
     unsigned int m_nNumChromaPlanes = 0;

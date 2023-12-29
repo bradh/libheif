@@ -220,6 +220,13 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
     }
 
     NvDecoder dec(ctx);
+    err = dec.initVideoParser();
+    if (err.code != heif_error_Ok) {
+        cuvidCtxLockDestroy(ctx->ctxLock);
+        cuCtxDestroy(cuContext);
+        return err;
+    }
+
     uint8_t *hevc_data;
     size_t hevc_data_size;
     nalus.buildWithStartCodes(&hevc_data, &hevc_data_size);
