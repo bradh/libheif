@@ -29,7 +29,18 @@
 
 #include <assert.h>
 #include <cstdint>
+#include <vector>
 #include "nvcuvid.h"
+
+struct nvdec_context
+{
+    std::vector<uint8_t> data;
+    int strict;
+    cudaVideoCodec eCodec = cudaVideoCodec_NumCodecs;
+    CUcontext cuContext = NULL;
+    CUvideoctxlock ctxLock;
+};
+
 
 /**
 * @brief Base class for decoder interface.
@@ -42,7 +53,7 @@ public:
     *  Application must call this function to initialize the decoder, before
     *  starting to decode any frames.
     */
-    NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec);
+    NvDecoder(nvdec_context *ctx);
     ~NvDecoder();
 
     /**
@@ -159,8 +170,6 @@ private:
     int GetOperatingPoint(CUVIDOPERATINGPOINTINFO *pOPInfo);
 
 private:
-    CUcontext m_cuContext = NULL;
-    CUvideoctxlock m_ctxLock;
     CUvideoparser m_hParser = NULL;
     CUvideodecoder m_hDecoder = NULL;
     // dimension of the output
@@ -168,7 +177,6 @@ private:
     unsigned int m_nNumChromaPlanes = 0;
     // height of the mapped surface 
     int m_nSurfaceHeight = 0;
-    cudaVideoCodec m_eCodec = cudaVideoCodec_NumCodecs;
     cudaVideoChromaFormat m_eChromaFormat = cudaVideoChromaFormat_420;
     cudaVideoSurfaceFormat m_eOutputFormat = cudaVideoSurfaceFormat_NV12;
     int m_nBitDepthMinus8 = 0;
@@ -179,4 +187,5 @@ private:
 
     unsigned int m_nOperatingPoint = 0;
     bool  m_bDispAllLayers = false;
+    nvdec_context *m_ctx;
 };

@@ -280,7 +280,7 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     decodecaps.eChromaFormat = pVideoFormat->chroma_format;
     decodecaps.nBitDepthMinus8 = pVideoFormat->bit_depth_luma_minus8;
 
-    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
+    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
     NVDEC_API_CALL(cuvidGetDecoderCaps(&decodecaps));
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
 
@@ -316,8 +316,7 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
         return nDecodeSurface;
     }
 
-    // eCodec has been set in the constructor (for parser). Here it's set again for potential correction
-    m_eCodec = pVideoFormat->codec;
+    m_ctx->eCodec = pVideoFormat->codec;
     m_eChromaFormat = pVideoFormat->chroma_format;
     m_nBitDepthMinus8 = pVideoFormat->bit_depth_luma_minus8;
     m_nBPP = m_nBitDepthMinus8 > 0 ? 2 : 1;
@@ -359,7 +358,7 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     // With PreferCUVID, JPEG is still decoded by CUDA while video is decoded by NVDEC hardware
     videoDecodeCreateInfo.ulCreationFlags = cudaVideoCreate_PreferCUVID;
     videoDecodeCreateInfo.ulNumDecodeSurfaces = nDecodeSurface;
-    videoDecodeCreateInfo.vidLock = m_ctxLock;
+    videoDecodeCreateInfo.vidLock = m_ctx->ctxLock;
     videoDecodeCreateInfo.ulWidth = pVideoFormat->coded_width;
     videoDecodeCreateInfo.ulHeight = pVideoFormat->coded_height;
 
@@ -390,7 +389,7 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
     m_nSurfaceHeight = (int) videoDecodeCreateInfo.ulTargetHeight;
 
-    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
+    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
     NVDEC_API_CALL(cuvidCreateDecoder(&m_hDecoder, &videoDecodeCreateInfo));
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
     return nDecodeSurface;
@@ -406,7 +405,7 @@ int NvDecoder::HandlePictureDecode(CUVIDPICPARAMS *pPicParams) {
         NVDEC_THROW_ERROR("Decoder not initialized.", CUDA_ERROR_NOT_INITIALIZED);
         return false;
     }
-    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
+    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
     NVDEC_API_CALL(cuvidDecodePicture(m_hDecoder, pPicParams));
     if ((!pPicParams->field_pic_flag) || (pPicParams->second_field))
     {
@@ -434,7 +433,7 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
 
     CUdeviceptr dpSrcFrame = 0;
     unsigned int nSrcPitch = 0;
-    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_cuContext));
+    CUDA_DRVAPI_CALL(cuCtxPushCurrent(m_ctx->cuContext));
     NVDEC_API_CALL(cuvidMapVideoFrame(m_hDecoder, pDispInfo->picture_index, &dpSrcFrame,
         &nSrcPitch, &videoProcessingParameters));
 
@@ -481,15 +480,14 @@ int NvDecoder::HandlePictureDisplay(CUVIDPARSERDISPINFO *pDispInfo) {
     return 1;
 }
 
-NvDecoder::NvDecoder(CUcontext cuContext, cudaVideoCodec eCodec) :
-    m_cuContext(cuContext), m_eCodec(eCodec)
+NvDecoder::NvDecoder(nvdec_context * ctx) : m_ctx(ctx)
 {
-    NVDEC_API_CALL(cuvidCtxLockCreate(&m_ctxLock, cuContext));
+    NVDEC_API_CALL(cuvidCtxLockCreate(&(m_ctx->ctxLock), m_ctx->cuContext));
 
     ck(cuStreamCreate(&m_cuvidStream, CU_STREAM_DEFAULT));
 
     CUVIDPARSERPARAMS videoParserParameters = {};
-    videoParserParameters.CodecType = eCodec;
+    videoParserParameters.CodecType = m_ctx->eCodec;
     videoParserParameters.ulMaxNumDecodeSurfaces = 1;
     videoParserParameters.ulClockRate = 1000;
     videoParserParameters.ulMaxDisplayDelay = 0;
@@ -507,7 +505,7 @@ NvDecoder::~NvDecoder() {
     if (m_hParser) {
         cuvidDestroyVideoParser(m_hParser);
     }
-    cuCtxPushCurrent(m_cuContext);
+    cuCtxPushCurrent(m_ctx->cuContext);
     if (m_hDecoder) {
         cuvidDestroyDecoder(m_hDecoder);
     }
@@ -516,7 +514,7 @@ NvDecoder::~NvDecoder() {
 
     cuCtxPopCurrent(NULL);
 
-    cuvidCtxLockDestroy(m_ctxLock);
+    cuvidCtxLockDestroy(m_ctx->ctxLock);
 }
 
 int NvDecoder::Decode(const uint8_t *pData, size_t nSize)

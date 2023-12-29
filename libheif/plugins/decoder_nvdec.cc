@@ -55,12 +55,6 @@ static const char *nvdec_plugin_name()
     return plugin_name;
 }
 
-struct nvdec_context
-{
-    std::vector<uint8_t> data;
-    int strict;
-};
-
 static void nvdec_init_plugin()
 {
     cuInit(0);
@@ -199,8 +193,10 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
                                  "could not get CUDA context"};
         return err;
     }
-    
-    NvDecoder dec(cuContext, cudaVideoCodec_HEVC);
+    // TODO: we don't want to hard code this
+    ctx->eCodec = cudaVideoCodec_HEVC;
+    ctx->cuContext = cuContext;
+    NvDecoder dec(ctx);
     uint8_t *hevc_data;
     size_t hevc_data_size;
     nalus.buildWithStartCodes(&hevc_data, &hevc_data_size);
