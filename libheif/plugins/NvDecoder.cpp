@@ -319,17 +319,18 @@ int NvDecoder::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat)
     }
 
     m_ctx->eCodec = pVideoFormat->codec;
-    m_eChromaFormat = pVideoFormat->chroma_format;
+    cudaVideoChromaFormat eChromaFormat = pVideoFormat->chroma_format;
     m_nBitDepthMinus8 = pVideoFormat->bit_depth_luma_minus8;
     m_nBPP = m_nBitDepthMinus8 > 0 ? 2 : 1;
 
     // Set the output surface format same as chroma format
-    if (m_eChromaFormat == cudaVideoChromaFormat_420 || cudaVideoChromaFormat_Monochrome)
+    if ((eChromaFormat == cudaVideoChromaFormat_420) || (eChromaFormat == cudaVideoChromaFormat_Monochrome)) {
         m_eOutputFormat = pVideoFormat->bit_depth_luma_minus8 ? cudaVideoSurfaceFormat_P016 : cudaVideoSurfaceFormat_NV12;
-    else if (m_eChromaFormat == cudaVideoChromaFormat_444)
+    } else if (eChromaFormat == cudaVideoChromaFormat_444) {
         m_eOutputFormat = pVideoFormat->bit_depth_luma_minus8 ? cudaVideoSurfaceFormat_YUV444_16Bit : cudaVideoSurfaceFormat_YUV444;
-    else if (m_eChromaFormat == cudaVideoChromaFormat_422)
+    } else if (eChromaFormat == cudaVideoChromaFormat_422) {
         m_eOutputFormat = cudaVideoSurfaceFormat_NV12;  // no 4:2:2 output format supported yet so make 420 default
+    }
 
     // Check if output format supported. If not, check falback options
     if (!(decodecaps.nOutputFormatMask & (1 << m_eOutputFormat)))

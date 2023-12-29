@@ -180,7 +180,6 @@ private:
     unsigned int m_nNumChromaPlanes = 0;
     // height of the mapped surface 
     int m_nSurfaceHeight = 0;
-    cudaVideoChromaFormat m_eChromaFormat = cudaVideoChromaFormat_420;
     cudaVideoSurfaceFormat m_eOutputFormat = cudaVideoSurfaceFormat_NV12;
     int m_nBitDepthMinus8 = 0;
     int m_nBPP = 1;

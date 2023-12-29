@@ -107,7 +107,6 @@ set(VVENC_sources encoder_vvenc.cc encoder_vvenc.h)
 set(VVENC_extra_plugin_sources)
 plugin_compilation(vvenc vvenc vvenc_FOUND VVENC VVENC)
 
-set(NV_DECODER_sources decoder_nvdec.cc decoder_nvdec.h nalu.cc nalu.h NvDecoder.cpp NvDecoder.h NvCodecUtils.h)
 set(NV_DECODER_sources decoder_nvdec.cc decoder_nvdec.h nalu.cc nalu.h NvDecoder.cpp NvDecoder.h)
 set(NV_DECODER_extra_plugin_sources)
 plugin_compilation(nvdec NVDEC NVDEC_FOUND NV_DECODER NV_DECODER)
