@@ -297,62 +297,9 @@ static struct heif_error ffmpeg_v1_decode_image(void* decoder_raw,
     return err;
   }
 
-<<<<<<< HEAD
-  if ((decoder->NalMap.count(NAL_UNIT_IDR_W_RADL) > 0) || (decoder->NalMap.count(NAL_UNIT_IDR_N_LP) > 0))
-  {
-      if (decoder->NalMap.count(NAL_UNIT_IDR_W_RADL) > 0)
-      {
-          heif_idrpic_data = decoder->NalMap[NAL_UNIT_IDR_W_RADL]->data();
-          heif_idrpic_size = decoder->NalMap[NAL_UNIT_IDR_W_RADL]->size();
-      }
-      else
-      {
-          heif_idrpic_data = decoder->NalMap[NAL_UNIT_IDR_N_LP]->data();
-          heif_idrpic_size = decoder->NalMap[NAL_UNIT_IDR_N_LP]->size();
-      }
-  }
-  else
-  {
-      struct heif_error err = { heif_error_Decoder_plugin_error,
-                                heif_suberror_End_of_data,
-                                "Unexpected end of data" };
-      return err;
-  }
-
-  const char hevc_AnnexB_StartCode[] = { 0x00, 0x00, 0x00, 0x01 };
-  int hevc_AnnexB_StartCode_size = 4;
-
-  size_t hevc_data_size = heif_vps_size + heif_sps_size + heif_pps_size + heif_idrpic_size + 4 * hevc_AnnexB_StartCode_size;
-  uint8_t* hevc_data = (uint8_t*)malloc(hevc_data_size + AV_INPUT_BUFFER_PADDING_SIZE);
-
-  //Copy hevc pps data
-  uint8_t* hevc_data_ptr = hevc_data;
-  memcpy(hevc_data_ptr, hevc_AnnexB_StartCode, hevc_AnnexB_StartCode_size);
-  hevc_data_ptr += hevc_AnnexB_StartCode_size;
-  memcpy(hevc_data_ptr, heif_vps_data, heif_vps_size);
-  hevc_data_ptr += heif_vps_size;
-
-  //Copy hevc sps data
-  memcpy(hevc_data_ptr, hevc_AnnexB_StartCode, hevc_AnnexB_StartCode_size);
-  hevc_data_ptr += hevc_AnnexB_StartCode_size;
-  memcpy(hevc_data_ptr, heif_sps_data, heif_sps_size);
-  hevc_data_ptr += heif_sps_size;
-
-  //Copy hevc pps data
-  memcpy(hevc_data_ptr, hevc_AnnexB_StartCode, hevc_AnnexB_StartCode_size);
-  hevc_data_ptr += hevc_AnnexB_StartCode_size;
-  memcpy(hevc_data_ptr, heif_pps_data, heif_pps_size);
-  hevc_data_ptr += heif_pps_size;
-
-  //Copy hevc idrpic data
-  memcpy(hevc_data_ptr, hevc_AnnexB_StartCode, hevc_AnnexB_StartCode_size);
-  hevc_data_ptr += hevc_AnnexB_StartCode_size;
-  memcpy(hevc_data_ptr, heif_idrpic_data, heif_idrpic_size);
-=======
   uint8_t *hevc_data;
   size_t hevc_data_size;
-  decoder->NalMap.buildWithStartCodes(&hevc_data, &hevc_data_size);
->>>>>>> 29940dba (initial version of NVIDIA hw plugin)
+  decoder->NalMap.buildWithStartCodesHEVC(&hevc_data, &hevc_data_size);
 
   //decoder->NalMap not needed anymore
   decoder->NalMap.clear();

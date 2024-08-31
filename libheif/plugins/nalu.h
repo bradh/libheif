@@ -32,9 +32,8 @@
 class NalUnit
 {
 public:
-    NalUnit(const unsigned char *in_data, int n);
 
-    ~NalUnit();
+    virtual ~NalUnit() {};
 
     int size() const
     {
@@ -50,6 +49,25 @@ public:
     {
         return nal_data_ptr;
     }
+
+protected:
+    virtual bool set_data(const unsigned char *in_data, int n) = 0;
+    int bitExtracted(int number, int bits_count, int position_nr);
+
+    const unsigned char *nal_data_ptr;
+
+    int nal_unit_type;
+
+    int nal_data_size;
+
+};
+
+class NalUnitHEVC: public NalUnit
+{
+public:
+    NalUnitHEVC(const unsigned char *in_data, int n);
+
+    ~NalUnitHEVC() {};
 
     /**
      * Coded slice segment of an IDR picture.
@@ -86,22 +104,27 @@ public:
      */
     static const int PPS_NUT;
 
-private:
+protected:
     bool set_data(const unsigned char *in_data, int n);
+};
 
-    int bitExtracted(int number, int bits_count, int position_nr);
+class NalUnitAVC: public NalUnit
+{
+public:
+    NalUnitAVC(const unsigned char *in_data, int n);
 
-    const unsigned char *nal_data_ptr;
+    ~NalUnitAVC() {};
 
-    int nal_unit_type;
-
-    int nal_data_size;
+protected:
+    bool set_data(const unsigned char *in_data, int n);
 };
 
 class NalUnitMap
 {
 public:
-    heif_error parseNALU(const uint8_t* data, size_t data_len);
+    heif_error parseNALU_HEVC(const uint8_t* data, size_t data_len);
+
+    heif_error parseNALU_AVC(const uint8_t* data, size_t data_len);
 
     bool IDR_is_valid();
 
@@ -109,7 +132,9 @@ public:
 
     void clear();
 
-    void buildWithStartCodes(uint8_t** hevc_data, size_t *hevc_data_size);
+    void buildWithStartCodesHEVC(uint8_t** hevc_data, size_t *hevc_data_size);
+
+    void buildWithStartCodesAVC(uint8_t** avc_data, size_t *avc_data_size);
 
 private:
 

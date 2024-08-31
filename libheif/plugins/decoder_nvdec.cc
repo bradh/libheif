@@ -20,14 +20,13 @@
 
 #include "libheif/heif.h"
 #include "libheif/heif_plugin.h"
-#include "libheif/security_limits.h"
-#include "libheif/common_utils.h"
+#include "common_utils.h"
 #include "decoder_nvdec.h"
 #include <memory>
 #include <cstring>
 #include <cassert>
 #include <cmath>
-#include <cstdio>
+#include <cstddef>
 #include <vector>
 #include <iomanip>
 #include <sstream>
@@ -128,6 +127,7 @@ struct heif_error nvdec_new_decoder(void **decoder)
 {
     struct nvdec_context *ctx = new nvdec_context();
     ctx->strict = false;
+    ctx->eCodec = cudaVideoCodec_HEVC;
     *decoder = ctx;
 
     return heif_error_ok;
@@ -161,20 +161,34 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
 {
     struct nvdec_context *ctx = (struct nvdec_context *)decoder;
 
+    heif_error err;
     NalUnitMap nalus;
-    heif_error err = nalus.parseNALU(ctx->data.data(), ctx->data.size());
-    if (err.code != heif_error_Ok) {
-        return err;
-    }
-    if ((!nalus.NUTs_are_valid()) || (!nalus.IDR_is_valid())) {
-        struct heif_error err = {heif_error_Decoder_plugin_error,
-                                 heif_suberror_End_of_data,
-                                 "Unexpected end of data"};
-        return err;
+    if (ctx->eCodec == cudaVideoCodec_HEVC) {
+        err = nalus.parseNALU_HEVC(ctx->data.data(), ctx->data.size());
+        if (err.code != heif_error_Ok) {
+            return err;
+        }
+        if ((!nalus.NUTs_are_valid()) || (!nalus.IDR_is_valid())) {
+            if (!nalus.NUTs_are_valid()) {
+                printf("NUTs not valid");
+            }
+            if (!nalus.IDR_is_valid()) {
+                printf("IDR not valid");
+            }
+            struct heif_error err = {heif_error_Decoder_plugin_error,
+                                    heif_suberror_End_of_data,
+                                    "Unexpected end of data"};
+            return err;
+        }
     }
 
-    // TODO: we should remove this and just use the ctx instance directly
-    CUcontext cuContext = NULL;
+    if (ctx->eCodec == cudaVideoCodec_H264) {
+        err = nalus.parseNALU_AVC(ctx->data.data(), ctx->data.size());
+        if (err.code != heif_error_Ok) {
+            return err;
+        }
+    }
+
     CUdevice cuDevice = 0;
 
     CUresult result;
@@ -186,7 +200,7 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
                                  "could not get CUDA device"};
         return err;
     }
-    result = cuCtxCreate(&cuContext, 0, cuDevice);
+    result = cuCtxCreate(&(ctx->cuContext), 0, cuDevice);
     if (result != CUDA_SUCCESS)
     {
         struct heif_error err = {heif_error_Decoder_plugin_error,
@@ -194,12 +208,9 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
                                  "could not get CUDA context"};
         return err;
     }
-    // TODO: we don't want to hard code this
-    ctx->eCodec = cudaVideoCodec_HEVC;
-    ctx->cuContext = cuContext;
     result = cuvidCtxLockCreate(&(ctx->ctxLock), ctx->cuContext);
     if (result != CUDA_SUCCESS) {
-        cuCtxDestroy(cuContext);
+        cuCtxDestroy(ctx->cuContext);
         struct heif_error err = {heif_error_Decoder_plugin_error,
                                  heif_suberror_Plugin_loading_error,
                                  "could not create CUDA context lock"};
@@ -215,7 +226,7 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
                                  heif_suberror_Plugin_loading_error,
                                  errMsg.str().c_str()};
         cuvidCtxLockDestroy(ctx->ctxLock);
-        cuCtxDestroy(cuContext);
+        cuCtxDestroy(ctx->cuContext);
         return err;
     }
 
@@ -223,14 +234,26 @@ struct heif_error nvdec_decode_image(void *decoder, struct heif_image **out_img)
     err = dec.initVideoParser();
     if (err.code != heif_error_Ok) {
         cuvidCtxLockDestroy(ctx->ctxLock);
-        cuCtxDestroy(cuContext);
+        cuCtxDestroy(ctx->cuContext);
         return err;
     }
 
-    uint8_t *hevc_data;
-    size_t hevc_data_size;
-    nalus.buildWithStartCodes(&hevc_data, &hevc_data_size);
-    int nFrameReturned = dec.Decode(hevc_data, hevc_data_size);
+    int nFrameReturned;
+    if (ctx->eCodec == cudaVideoCodec_HEVC) {
+        uint8_t *hevc_data;
+        size_t avc_data_size;
+        nalus.buildWithStartCodesHEVC(&hevc_data, &avc_data_size);
+        nFrameReturned = dec.Decode(hevc_data, avc_data_size);
+    } else if (ctx->eCodec == cudaVideoCodec_H264) {
+        uint8_t *avc_data;
+        size_t avc_data_size;
+        nalus.buildWithStartCodesAVC(&avc_data, &avc_data_size);
+        nFrameReturned = dec.Decode(avc_data, avc_data_size);
+        printf("nFrameReturned: %d\n", nFrameReturned);
+    } else {
+        nFrameReturned = dec.Decode(ctx->data.data(), ctx->data.size());
+    }
+    
     if (nFrameReturned > 0) {
         uint8_t *pFrame = dec.GetFrame();
 
@@ -278,19 +301,49 @@ void nvdec_set_strict_decoding(void *decoder, int strict)
     ctx->strict = strict;
 }
 
+struct heif_error nvdec_new_decoder2(void **decoder, const heif_decoder_configuration *config)
+{
+    struct nvdec_context *ctx = new nvdec_context();
+    ctx->strict = false;
+    switch (config->compression_format) {
+        case heif_compression_AV1:
+            ctx->eCodec = cudaVideoCodec_AV1;
+            break;
+        case heif_compression_AVC:
+            ctx->eCodec = cudaVideoCodec_H264;
+            break;
+        case heif_compression_HEVC:
+            ctx->eCodec = cudaVideoCodec_HEVC;
+            break;
+        case heif_compression_JPEG:
+            ctx->eCodec = cudaVideoCodec_JPEG;
+            break;
+        default:
+            delete ctx;
+            struct heif_error err = {heif_error_Decoder_plugin_error,
+                                     heif_suberror_Plugin_loading_error,
+                                    "unsupported compression format"};
+            return err;
+    }
+    *decoder = ctx;
+
+    return heif_error_ok;
+}
+
 static const struct heif_decoder_plugin decoder_nvdec
 {
-    3,
-        nvdec_plugin_name,
-        nvdec_init_plugin,
-        nvdec_deinit_plugin,
-        nvdec_does_support_format,
-        nvdec_new_decoder,
-        nvdec_free_decoder,
-        nvdec_push_data,
-        nvdec_decode_image,
-        nvdec_set_strict_decoding,
-        "NVDEC"
+    4,
+    nvdec_plugin_name,
+    nvdec_init_plugin,
+    nvdec_deinit_plugin,
+    nvdec_does_support_format,
+    nvdec_new_decoder,
+    nvdec_free_decoder,
+    nvdec_push_data,
+    nvdec_decode_image,
+    nvdec_set_strict_decoding,
+    "NVDEC",
+    nvdec_new_decoder2
 };
 
 const struct heif_decoder_plugin *get_decoder_plugin_nvdec()
