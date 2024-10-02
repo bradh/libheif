@@ -32,7 +32,7 @@ FileLayout::FileLayout()
   (void)m_file_size;
 }
 
-
+// TODO: this needs to not duplicate code.
 Error FileLayout::read(const std::shared_ptr<StreamReader>& stream)
 {
   m_boxes.clear();
@@ -91,7 +91,7 @@ Error FileLayout::read(const std::shared_ptr<StreamReader>& stream)
   m_ftyp_box = std::dynamic_pointer_cast<Box_ftyp>(ftyp_box);
 
 
-  // --- skip through box headers until we find the 'meta' box
+  // --- skip through box headers until we find the 'meta' or a 'mini' box
 
   uint64_t next_box_start = ftyp_size;
 
@@ -147,7 +147,40 @@ Error FileLayout::read(const std::shared_ptr<StreamReader>& stream)
       m_meta_box = std::dynamic_pointer_cast<Box_meta>(meta_box);
       break;
     }
+    if (box_header.get_short_type() == fourcc("mini")) {
+      std::cout << "got unsupported mini box" << std::endl;
+            const uint64_t mini_box_start = next_box_start;
+      if (box_header.get_box_size() == 0) {
+        // TODO: get file-size from stream and compute box size
+        return {heif_error_Invalid_input,
+                heif_suberror_No_meta_box,
+                "Cannot read mini box with unspecified size"};
+      }
+      uint64_t end_of_mini_box = mini_box_start + box_header.get_box_size();
+      if (m_max_length < end_of_mini_box) {
+        m_max_length = m_stream_reader->request_range(mini_box_start, end_of_mini_box);
+      }
 
+      if (m_max_length < end_of_mini_box) {
+        return {heif_error_Invalid_input,
+                heif_suberror_No_meta_box,
+                "Cannot read full mini box"};
+      }
+      BitstreamRange mini_box_range(m_stream_reader, mini_box_start, end_of_mini_box);
+            std::shared_ptr<Box> mini_box;
+      err = Box::read(mini_box_range, &mini_box);
+      if (err) {
+        std::cout << "error reading mini box" << std::endl;
+        return err;
+      }
+
+      m_boxes.push_back(mini_box);
+      m_mini_box = std::dynamic_pointer_cast<Box_mini>(mini_box);
+      if (m_mini_box == nullptr) {
+        std::cout << "error casting mini box" << std::endl;
+      }
+      return Error::Ok;
+    }
     if (box_header.get_box_size() == 0) {
       return {heif_error_Invalid_input,
               heif_suberror_No_meta_box,

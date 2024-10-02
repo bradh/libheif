@@ -38,6 +38,8 @@
 
 #include "region.h"
 
+const std::string AVIF_ITEM_TYPE = "av01";
+
 class HeifContext;
 
 class HeifFile;

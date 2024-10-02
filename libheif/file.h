@@ -209,6 +209,7 @@ private:
   std::shared_ptr<Box_ftyp> m_ftyp_box;
   std::shared_ptr<Box_hdlr> m_hdlr_box;
   std::shared_ptr<Box_meta> m_meta_box;
+  std::shared_ptr<Box_mini> m_mini_box; // meta alternative
 
   std::shared_ptr<Box_ipco> m_ipco_box;
   std::shared_ptr<Box_ipma> m_ipma_box;

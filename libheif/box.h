@@ -390,7 +390,11 @@ public:
 
   std::vector<uint32_t> list_brands() const { return m_compatible_brands; }
 
+  uint32_t get_major_brand() const { return m_major_brand; }
+
   void set_major_brand(heif_brand2 major_brand) { m_major_brand = major_brand; }
+
+  uint32_t get_minor_version() const { return m_minor_version; }
 
   void set_minor_version(uint32_t minor_version) { m_minor_version = minor_version; }
 
@@ -552,6 +556,8 @@ public:
   Error write(StreamWriter& writer) const override;
 
   Error write_mdat_after_iloc(StreamWriter& writer);
+
+  void append_item(Item &item) { m_items.push_back(item); }
 
 protected:
   Error parse(BitstreamRange& range) override;
@@ -1472,6 +1478,63 @@ private:
   std::string m_name;
   std::string m_description;
   std::string m_tags;
+};
+
+class Box_mini : public Box
+{
+public:
+  Box_mini()
+  {
+    set_short_type(fourcc("mini"));
+  }
+
+  uint32_t get_width() const { return m_width; }
+  uint32_t get_height() const { return m_height; }
+  uint64_t get_main_item_data_offset() const { return m_main_item_data_offset; }
+  uint32_t get_main_item_data_size() const { return m_main_item_data_size; }
+
+  std::string dump(Indent&) const override;
+
+protected:
+  Error parse(BitstreamRange& range) override;
+
+private:
+  uint8_t m_version;
+  bool m_explicit_codec_types_flag;
+  bool m_float_flag;
+  bool m_full_range_flag;
+  bool m_alpha_flag;
+  bool m_explicit_cicp_flag;
+  bool m_hdr_flag;
+  bool m_icc_flag;
+  bool m_exif_flag;
+  bool m_xmp_flag;
+  uint8_t chroma_subsampling;
+  uint8_t orientation;
+
+  uint32_t m_width;
+  uint32_t m_height;
+  uint8_t m_bit_depth = 8;
+  bool m_chroma_is_horizontally_centred = false;
+  bool m_chroma_is_vertically_centred = false;
+  bool m_alpha_is_premultiplied = false;
+
+  bool m_gainmap_flag = false;
+  bool m_tmap_icc_flag = false;
+
+  std::vector<uint8_t> m_alpha_item_codec_config;
+  std::vector<uint8_t> m_gainmap_item_codec_config;
+  std::vector<uint8_t> m_main_item_codec_config;
+  std::vector<uint8_t> m_icc_data;
+  std::vector<uint8_t> m_tmap_icc_data;
+  std::vector<uint8_t> m_gainmap_metadata;
+  std::vector<uint8_t> m_alpha_item_data;
+  std::vector<uint8_t> m_gainmap_item_data;
+  std::vector<uint8_t> m_exif_data;
+  std::vector<uint8_t> m_xmp_data;
+
+  uint64_t m_main_item_data_offset;
+  uint32_t m_main_item_data_size;
 };
 
 #endif

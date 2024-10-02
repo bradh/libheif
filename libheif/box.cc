@@ -35,6 +35,7 @@
 #include <utility>
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <set>
 #include <cassert>
@@ -686,6 +687,10 @@ Error Box::read(BitstreamRange& range, std::shared_ptr<Box>* result)
       box = std::make_shared<Box_tilC>();
       break;
 
+    case fourcc("mini"):
+      box = std::make_shared<Box_mini>();
+      break;
+
     case fourcc("mdat"):
       // avoid generating a 'Box_other'
       box = std::make_shared<Box>();
@@ -1047,7 +1052,7 @@ Error Box_ftyp::parse(BitstreamRange& range)
   m_minor_version = range.read32();
 
   uint64_t box_size = get_box_size();
-  if (box_size < 8 || box_size - 8 <= get_header_size()) {
+  if (box_size < 8 || box_size - 8 < get_header_size()) {
     // Sanity check.
     return Error(heif_error_Invalid_input,
                  heif_suberror_Invalid_box_size,
@@ -1080,8 +1085,15 @@ std::string Box_ftyp::dump(Indent& indent) const
   sstr << BoxHeader::dump(indent);
 
   sstr << indent << "major brand: " << to_fourcc(m_major_brand) << "\n"
-       << indent << "minor version: " << m_minor_version << "\n"
-       << indent << "compatible brands: ";
+       << indent << "minor version: ";
+  if (m_minor_version < ('A' << 24)) {
+    // This is probably a version number
+    sstr << m_minor_version;
+  } else {
+    // probably a 4CC, as used for mif3
+    sstr << to_fourcc(m_minor_version);
+  }
+  sstr << "\n" << indent << "compatible brands: ";
 
   bool first = true;
   for (uint32_t brand : m_compatible_brands) {
@@ -4283,4 +4295,163 @@ Error Box_cmex::write(StreamWriter& writer) const
   prepend_header(writer, box_start);
 
   return Error::Ok;
+}
+
+Error Box_mini::parse(BitstreamRange& range)
+{
+  uint64_t start_offset = range.get_istream()->get_position();
+  size_t length = range.get_remaining_bytes();
+  std::vector<uint8_t> mini_data(length);
+  range.read(mini_data.data(), mini_data.size());
+  BitReader bits(mini_data.data(), (int)(mini_data.size()));
+  bits.set_start_offset(start_offset);
+  m_version = bits.get_bits8(2);
+  m_explicit_codec_types_flag = bits.get_flag();
+  m_float_flag = bits.get_flag();
+  m_full_range_flag = bits.get_flag();
+  m_alpha_flag = bits.get_flag();
+  m_explicit_cicp_flag = bits.get_flag();
+  m_hdr_flag = bits.get_flag();
+  m_icc_flag = bits.get_flag();
+  m_exif_flag = bits.get_flag();
+  m_xmp_flag = bits.get_flag();
+  chroma_subsampling = bits.get_bits8(2);
+  orientation = bits.get_bits8(3) + 1;
+  bool small_dimensions_flag = bits.get_flag();
+  if (small_dimensions_flag) {
+    m_width = 1 + bits.get_bits32(7);
+    m_height = 1 + bits.get_bits32(7);
+  } else {
+    m_width = 1 + bits.get_bits32(15);
+    m_height = 1 + bits.get_bits32(15);
+  }
+  if ((chroma_subsampling == 1) || (chroma_subsampling == 2)) {
+    m_chroma_is_horizontally_centred = bits.get_flag();
+  }
+  if (chroma_subsampling == 1) {
+    m_chroma_is_vertically_centred = bits.get_flag();
+  }
+  bool high_bit_depth_flag = false;
+  if (m_float_flag) {
+    uint8_t bit_depth_log2_minus4 = bits.get_bits8(2);
+    m_bit_depth = (uint8_t)powl(2, (bit_depth_log2_minus4 + 4));
+  } else {
+    high_bit_depth_flag = bits.get_flag();
+    if (high_bit_depth_flag) {
+      m_bit_depth = 9 + bits.get_bits8(3);
+    }
+  }
+  if (m_alpha_flag) {
+    m_alpha_is_premultiplied = bits.get_flag();
+  }
+  if (m_explicit_cicp_flag) {
+    // TODO
+    assert(false);
+  } else {
+    // TODO - implicit
+  }
+  if (m_explicit_codec_types_flag) {
+    assert(false);
+  }
+  if (m_hdr_flag) {
+    m_gainmap_flag = bits.get_flag();
+    // TODO
+    assert(false);
+  }
+  bool few_metadata_bytes_flag = false;
+  if (m_icc_flag || m_exif_flag || m_xmp_flag || (m_hdr_flag && m_gainmap_flag)) {
+    few_metadata_bytes_flag = bits.get_flag();
+  }
+  bool few_codec_config_bytes_flag = bits.get_flag();
+  bool few_item_data_bytes_flag = bits.get_flag();
+
+  uint32_t icc_data_size_minus1;
+  if (m_icc_flag) {
+    icc_data_size_minus1 = bits.get_bits32(few_metadata_bytes_flag ? 10 : 20);
+  }
+  uint32_t tmap_icc_data_size_minus1;
+  if (m_hdr_flag && m_gainmap_flag && m_tmap_icc_flag) {
+    tmap_icc_data_size_minus1 = bits.get_bits32(few_metadata_bytes_flag ? 10 : 20);
+  }
+  uint32_t gainmap_metadata_size = 0;
+  if (m_hdr_flag && m_gainmap_flag) {
+    gainmap_metadata_size = bits.get_bits32(few_metadata_bytes_flag ? 10 : 20);
+  }
+  uint32_t gainmap_item_data_size = 0;
+  if (m_hdr_flag && m_gainmap_flag) {
+    gainmap_item_data_size = bits.get_bits32(few_item_data_bytes_flag ? 15 : 28);
+  }
+  uint32_t gainmap_item_codec_config_size = 0;
+  if (m_hdr_flag && m_gainmap_flag && (gainmap_item_data_size > 0)) {
+    gainmap_item_codec_config_size = bits.get_bits32(few_codec_config_bytes_flag ? 3 : 12);
+  }
+
+  uint32_t main_item_codec_config_size = bits.get_bits32(few_codec_config_bytes_flag ? 3 : 12);
+  uint32_t main_item_data_size_minus1 = bits.get_bits32(few_item_data_bytes_flag ? 15 : 28);
+
+  uint32_t alpha_item_data_size = 0;
+  if (m_alpha_flag) {
+    alpha_item_data_size = bits.get_bits32(few_item_data_bytes_flag ? 15 : 28);
+  }
+  uint32_t alpha_item_codec_config_size = 0;
+  if (m_alpha_flag && (alpha_item_data_size > 0)) {
+    alpha_item_codec_config_size = bits.get_bits32(few_codec_config_bytes_flag ? 3 : 12);
+  }
+
+  uint32_t exif_data_size_minus1 = 0;
+  if (m_exif_flag) {
+    exif_data_size_minus1 = bits.get_bits32(few_metadata_bytes_flag ? 10 : 20);
+  }
+  uint32_t xmp_data_size_minus1 = 0;
+  if (m_xmp_flag) {
+    xmp_data_size_minus1 = bits.get_bits32(few_metadata_bytes_flag ? 10 : 20);
+  }
+
+  bits.skip_to_byte_boundary();
+
+  if (m_alpha_flag && (alpha_item_data_size > 0) && (alpha_item_codec_config_size > 0)) {
+    m_alpha_item_codec_config = bits.read_bytes(alpha_item_codec_config_size);
+  }
+  if (m_hdr_flag && m_gainmap_flag && (gainmap_item_codec_config_size > 0)) {
+    m_gainmap_item_codec_config = bits.read_bytes(gainmap_item_codec_config_size);
+  }
+  if (main_item_codec_config_size > 0) {
+    m_main_item_codec_config = bits.read_bytes(main_item_codec_config_size);
+  }
+
+  if (m_icc_flag) {
+    m_icc_data = bits.read_bytes(icc_data_size_minus1 + 1);
+  }
+  if (m_hdr_flag && m_gainmap_flag && m_tmap_icc_flag) {
+    m_tmap_icc_data = bits.read_bytes(tmap_icc_data_size_minus1 + 1);
+  }
+  if (m_hdr_flag && m_gainmap_flag && (gainmap_metadata_size > 0)) {
+    m_gainmap_metadata = bits.read_bytes(gainmap_metadata_size);
+  }
+
+  if (m_alpha_flag && (alpha_item_data_size > 0)) {
+    m_alpha_item_data = bits.read_bytes(alpha_item_data_size);
+  }
+  if (m_alpha_flag && m_gainmap_flag && (gainmap_item_data_size > 0)) {
+    m_gainmap_item_data = bits.read_bytes(gainmap_item_data_size);
+  }
+
+  m_main_item_data_offset = bits.get_file_offset();
+  m_main_item_data_size = main_item_data_size_minus1 + 1;
+  bits.skip_bytes(m_main_item_data_size);
+
+  if (m_exif_flag) {
+    m_exif_data = bits.read_bytes(exif_data_size_minus1 + 1);
+  }
+  if (m_xmp_flag) {
+    m_xmp_data = bits.read_bytes(xmp_data_size_minus1 + 1);
+  }
+  return range.get_error();
+}
+
+std::string Box_mini::dump(Indent& indent) const
+{
+  std::ostringstream sstr;
+  sstr << Box::dump(indent);
+  return sstr.str();
 }

@@ -162,9 +162,11 @@ void HeifFile::new_empty_file()
   m_iprp_box->append_child_box(m_ipma_box);
 
   m_infe_boxes.clear();
+  m_mini_box = std::make_shared<Box_mini>();
 
   m_top_level_boxes.push_back(m_ftyp_box);
   m_top_level_boxes.push_back(m_meta_box);
+  m_top_level_boxes.push_back(m_mini_box);
 }
 
 
@@ -257,6 +259,9 @@ std::string HeifFile::debug_dump_boxes() const
   bool first = true;
 
   for (const auto& box : m_top_level_boxes) {
+    if (box == nullptr) {
+      continue;
+    }
     // dump box content for debugging
 
     if (first) {
@@ -273,6 +278,17 @@ std::string HeifFile::debug_dump_boxes() const
   return sstr.str();
 }
 
+
+static std::string get_item_type_for_brand(const heif_brand2 brand)
+{
+  switch(brand) {
+    case heif_brand2_avif:
+      return AVIF_ITEM_TYPE;
+    // TODO: more
+    default:
+      return std::string("");
+  }
+}
 
 Error HeifFile::parse_heif_file()
 {
@@ -315,9 +331,11 @@ Error HeifFile::parse_heif_file()
 
   m_ftyp_box = m_file_layout->get_ftyp_box();
   m_meta_box = m_file_layout->get_meta_box();
+  m_mini_box = m_file_layout->get_mini_box();
 
   m_top_level_boxes.push_back(m_ftyp_box);
   m_top_level_boxes.push_back(m_meta_box);
+  m_top_level_boxes.push_back(m_mini_box);
   // TODO: we are missing 'mdat' top level boxes
 
 
@@ -333,6 +351,7 @@ Error HeifFile::parse_heif_file()
       !m_ftyp_box->has_compatible_brand(heif_brand2_mif1) &&
       !m_ftyp_box->has_compatible_brand(heif_brand2_avif) &&
       !m_ftyp_box->has_compatible_brand(heif_brand2_1pic) &&
+      !(m_ftyp_box->get_major_brand() == heif_brand2_mif3) &&
       !m_ftyp_box->has_compatible_brand(heif_brand2_jpeg)) {
     std::stringstream sstr;
     sstr << "File does not include any supported brands.\n";
@@ -341,7 +360,62 @@ Error HeifFile::parse_heif_file()
                  heif_suberror_Unspecified,
                  sstr.str());
   }
+  if (m_mini_box) {
+    m_hdlr_box = std::make_shared<Box_hdlr>();
+    m_hdlr_box->set_handler_type(fourcc("pict"));
 
+    m_pitm_box = std::make_shared<Box_pitm>();
+    m_pitm_box->set_item_ID(1);
+
+    std::shared_ptr<Box_infe> primary_infe_box = std::make_shared<Box_infe>();
+    primary_infe_box->set_version(2);
+    primary_infe_box->set_item_ID(1);
+    // TODO: check explicit codec flag
+    uint32_t minor_version = m_ftyp_box->get_minor_version();
+    heif_brand2 mini_brand = minor_version;
+    primary_infe_box->set_item_type(get_item_type_for_brand(mini_brand));
+    m_infe_boxes.insert(std::make_pair(1, primary_infe_box));
+
+    m_ipco_box = std::make_shared<Box_ipco>();
+    // TODO: we should look this up based on the infe prop, not assume Box_av1C.
+    std::shared_ptr<Box_av1C> main_item_codec_prop = std::make_shared<Box_av1C>();
+    // TODO: set configuration
+    m_ipco_box->append_child_box(main_item_codec_prop);
+    std::shared_ptr<Box_ispe> ispe = std::make_shared<Box_ispe>();
+    ispe->set_size(m_mini_box->get_width(), m_mini_box->get_height());
+    m_ipco_box->append_child_box(ispe);
+    std::shared_ptr<Box_pixi> pixi = std::make_shared<Box_pixi>();
+    pixi->set_version(0);
+    // pixi->set_version(1); // TODO: when we support version 1
+    // TODO: there is more when we do version 1
+    pixi->add_channel_bits(8); // TODO: parse from mini
+    pixi->add_channel_bits(8); // TODO: parse from mini
+    pixi->add_channel_bits(8); // TODO: parse from mini
+    m_ipco_box->append_child_box(pixi);
+    // TODO: m_ipco_box->append_child_box(colr); 
+
+    m_ipma_box = std::make_shared<Box_ipma>();
+    m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{true, uint16_t(1)});
+    m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{false, uint16_t(2)});
+    m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{false, uint16_t(3)});
+    // TODO: will need more
+
+    m_iloc_box = std::make_shared<Box_iloc>();
+    Box_iloc::Item item;
+    item.item_ID = 1;
+    item.construction_method = 0;
+    item.base_offset = 0;
+    item.data_reference_index = 0;
+    Box_iloc::Extent extent;
+    extent.offset = m_mini_box->get_main_item_data_offset();
+    extent.length = m_mini_box->get_main_item_data_size();
+    item.extents.push_back(extent);
+    m_iloc_box->append_item(item);
+
+    return Error::Ok;
+  }
+
+  // if we didn't find the mini box, meta is required
   if (!m_meta_box) {
     return Error(heif_error_Invalid_input,
                  heif_suberror_No_meta_box);

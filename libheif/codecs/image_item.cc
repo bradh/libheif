@@ -116,7 +116,7 @@ std::shared_ptr<ImageItem> ImageItem::alloc_for_infe_box(HeifContext* ctx, const
   else if (item_type == "hvc1") {
     return std::make_shared<ImageItem_HEVC>(ctx, id);
   }
-  else if (item_type == "av01") {
+  else if (item_type == AVIF_ITEM_TYPE) {
     return std::make_shared<ImageItem_AVIF>(ctx, id);
   }
   else if (item_type == "vvc1") {

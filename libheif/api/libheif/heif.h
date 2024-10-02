@@ -782,6 +782,13 @@ typedef uint32_t heif_brand2;
 #define heif_brand2_mif2   heif_fourcc('m','i','f','2')
 
 /**
+ * HEIF image structural brand (`mif3`).
+ *
+ * This indicates the low-overhead (ftyp+mini) structure.
+ */
+#define heif_brand2_mif3   heif_fourcc('m','i','f','3')
+
+/**
  * HEIF image sequence structural brand (`msf1`).
  *
  * This does not imply a specific coding algorithm.

@@ -363,6 +363,10 @@ public:
 
   uint32_t get_bits32(int n);
 
+  bool get_flag();
+
+  std::vector<uint8_t> read_bytes(uint32_t n);
+
   int get_bits_fast(int n);
 
   int peek_bits(int n);
@@ -389,10 +393,21 @@ public:
     return ((int64_t) bytes_remaining) * 8 + nextbits_cnt;
   }
 
+  void set_start_offset(uint64_t offset)
+  {
+    start_offset = offset;
+  }
+
+  uint64_t get_file_offset() const
+  {
+    return start_offset + (data_length - bytes_remaining - (nextbits_cnt / 8));
+  }
+
 private:
   const uint8_t* data;
   int data_length;
   int bytes_remaining;
+  uint64_t start_offset = 0;
 
   uint64_t nextbits; // left-aligned bits
   int nextbits_cnt;

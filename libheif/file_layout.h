@@ -54,6 +54,7 @@ public:
   std::shared_ptr<Box_ftyp> get_ftyp_box() { return m_ftyp_box; }
 
   std::shared_ptr<Box_meta> get_meta_box() { return m_meta_box; }
+  std::shared_ptr<Box_mini> get_mini_box() { return m_mini_box; }
 
 private:
   WriteMode m_writeMode = WriteMode::Floating;
@@ -67,7 +68,7 @@ private:
 
   std::shared_ptr<Box_ftyp> m_ftyp_box;
   std::shared_ptr<Box_meta> m_meta_box;
-
+  std::shared_ptr<Box_mini> m_mini_box;
 
   uint64_t m_max_length = 0; // Length seen so far. It can grow over time.
 
