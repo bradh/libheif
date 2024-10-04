@@ -377,13 +377,22 @@ Error HeifFile::parse_heif_file()
     m_infe_boxes.insert(std::make_pair(1, primary_infe_box));
 
     m_ipco_box = std::make_shared<Box_ipco>();
+
     // TODO: we should look this up based on the infe prop, not assume Box_av1C.
     std::shared_ptr<Box_av1C> main_item_codec_prop = std::make_shared<Box_av1C>();
-    // TODO: set configuration
+    std::shared_ptr<StreamReader> istr =
+      std::make_shared<StreamReader_memory>(
+        m_mini_box->get_main_item_codec_config().data(),
+        m_mini_box->get_main_item_codec_config().size(),
+        false);
+    BitstreamRange codec_range(istr, m_mini_box->get_main_item_codec_config().size(), nullptr);
+    main_item_codec_prop->parse(codec_range);
     m_ipco_box->append_child_box(main_item_codec_prop);
+
     std::shared_ptr<Box_ispe> ispe = std::make_shared<Box_ispe>();
     ispe->set_size(m_mini_box->get_width(), m_mini_box->get_height());
     m_ipco_box->append_child_box(ispe);
+
     std::shared_ptr<Box_pixi> pixi = std::make_shared<Box_pixi>();
     pixi->set_version(0);
     // pixi->set_version(1); // TODO: when we support version 1
@@ -392,12 +401,21 @@ Error HeifFile::parse_heif_file()
     pixi->add_channel_bits(8); // TODO: parse from mini
     pixi->add_channel_bits(8); // TODO: parse from mini
     m_ipco_box->append_child_box(pixi);
-    // TODO: m_ipco_box->append_child_box(colr); 
+
+    std::shared_ptr<Box_colr> colr = std::make_shared<Box_colr>();
+    std::shared_ptr<color_profile_nclx> nclx = std::make_shared<color_profile_nclx>();
+    nclx->set_colour_primaries(m_mini_box->get_colour_primaries());
+    nclx->set_transfer_characteristics(m_mini_box->get_transfer_characteristics());
+    nclx->set_matrix_coefficients(m_mini_box->get_matrix_coefficients());
+    nclx->set_full_range_flag(m_mini_box->get_full_range_flag());
+    colr->set_color_profile(nclx);
+    m_ipco_box->append_child_box(colr);
 
     m_ipma_box = std::make_shared<Box_ipma>();
     m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{true, uint16_t(1)});
     m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{false, uint16_t(2)});
     m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{false, uint16_t(3)});
+    m_ipma_box->add_property_for_item_ID(1, Box_ipma::PropertyAssociation{true, uint16_t(4)});
     // TODO: will need more
 
     m_iloc_box = std::make_shared<Box_iloc>();

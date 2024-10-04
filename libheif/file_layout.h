@@ -24,6 +24,7 @@
 #include "error.h"
 #include "bitstream.h"
 #include "box.h"
+#include "mini.h"
 #include <memory>
 #include <vector>
 

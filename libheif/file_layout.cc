@@ -148,12 +148,11 @@ Error FileLayout::read(const std::shared_ptr<StreamReader>& stream)
       break;
     }
     if (box_header.get_short_type() == fourcc("mini")) {
-      std::cout << "got unsupported mini box" << std::endl;
-            const uint64_t mini_box_start = next_box_start;
+      const uint64_t mini_box_start = next_box_start;
       if (box_header.get_box_size() == 0) {
         // TODO: get file-size from stream and compute box size
         return {heif_error_Invalid_input,
-                heif_suberror_No_meta_box,
+                heif_suberror_No_mini_box,
                 "Cannot read mini box with unspecified size"};
       }
       uint64_t end_of_mini_box = mini_box_start + box_header.get_box_size();
@@ -163,7 +162,7 @@ Error FileLayout::read(const std::shared_ptr<StreamReader>& stream)
 
       if (m_max_length < end_of_mini_box) {
         return {heif_error_Invalid_input,
-                heif_suberror_No_meta_box,
+                heif_suberror_No_mini_box,
                 "Cannot read full mini box"};
       }
       BitstreamRange mini_box_range(m_stream_reader, mini_box_start, end_of_mini_box);

@@ -35,6 +35,9 @@
 
 class Box_av1C : public Box
 {
+
+friend class HeifFile;
+
 public:
   Box_av1C()
   {
